@@ -18,41 +18,36 @@ Talk to it in natural language, paste code snippets, ask for explanations, bug a
 - Clean, responsive Streamlit UI
 - Provider abstraction – switch models/providers without rewriting core logic
 - Secrets loaded only from environment variables
-- Modular architecture ready for future versions
+- Flat, simple structure ready for future versions
 
 ## Architecture
 
 ```
 User
  ↓
-Streamlit Chat UI
+Streamlit Chat UI (main.py)
  ↓
-AI Engine
+AI Engine (ai_engine.py)
  ↓
-Conversation Manager (runtime context)
+Conversation Manager (conversation.py)  – runtime context
  ↓
-AI Provider (OpenAI-compatible)
+AI Provider (ai_provider.py)  – OpenAI-compatible
  ↓
 LLM (OpenAI / Groq / OpenRouter / local / …)
  ↓
 Response
 ```
 
-### Project Structure
+### Project Structure (Flat)
 
 ```
 personal-coding-ai/
-├── app/
-│   ├── main.py              # Streamlit UI
-│   ├── config.py            # Environment-based configuration
-│   ├── ai/
-│   │   ├── engine.py        # Core orchestration + system prompt
-│   │   └── provider.py      # Abstract + OpenAI-compatible provider
-│   └── chat/
-│       └── conversation.py  # In-memory conversation management
-├── tests/
-│   └── test_conversation.py
-├── main.py                  # Entry point
+├── main.py              # Streamlit UI + application entry point
+├── config.py            # Environment-based configuration
+├── ai_engine.py         # Core orchestration + system prompt
+├── ai_provider.py       # Abstract + OpenAI-compatible provider
+├── conversation.py      # In-memory conversation management
+├── tests.py             # Unit tests
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
@@ -67,8 +62,8 @@ personal-coding-ai/
 ## Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/personal-coding-ai.git
-cd personal-coding-ai
+git clone https://github.com/mrkhoshkam78/Nova.git
+cd Nova
 
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
@@ -118,19 +113,8 @@ Unit tests (no network required):
 
 ```bash
 pip install pytest
-pytest tests/ -v
+pytest tests.py -v
 ```
-
-Manual testing checklist (real user simulation):
-
-1. Start the app
-2. Ask a normal question
-3. Ask a coding question
-4. Paste a code snippet and request analysis
-5. Continue the conversation (context should be preserved)
-6. Start a New Chat
-7. Test with missing/invalid API key (error should be clear)
-8. Restart the application
 
 ## Troubleshooting
 
@@ -160,4 +144,4 @@ MIT License – feel free to use, modify, and build upon this project.
 
 ---
 
-Built as a clean, modular foundation for a real personal coding AI.
+Built as a clean, flat, modular foundation for a real personal coding AI.
