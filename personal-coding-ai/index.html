@@ -2,11 +2,11 @@
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Personal Coding AI – Your personal coding assistant" />
-  <title>Personal Coding AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Nova – Your personal coding AI assistant" />
+  <meta name="theme-color" content="#0f1117" />
+  <title>Nova</title>
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -15,37 +15,36 @@
 </head>
 <body>
 
-  <!-- Mobile overlay -->
-  <div id="mobile-overlay" class="mobile-overlay"></div>
+  <div id="mobile-overlay" class="mobile-overlay" aria-hidden="true"></div>
 
   <!-- ========== Sidebar ========== -->
-  <aside id="sidebar" class="sidebar">
+  <aside id="sidebar" class="sidebar" aria-label="Sidebar">
     <div class="sidebar-header">
       <div class="logo">
-        <div class="logo-icon">🤖</div>
-        <span>Personal Coding AI</span>
+        <div class="logo-icon" aria-hidden="true">✦</div>
+        <span>Nova</span>
       </div>
     </div>
 
-    <button id="new-chat-btn" class="new-chat-btn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <button type="button" id="new-chat-btn" class="new-chat-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
         <line x1="12" y1="5" x2="12" y2="19"/>
         <line x1="5" y1="12" x2="19" y2="12"/>
       </svg>
       New Chat
     </button>
 
-    <div id="conversation-list" class="conversation-list">
+    <div id="conversation-list" class="conversation-list" role="list">
       <!-- Conversations injected by JS -->
     </div>
 
     <div class="sidebar-footer">
       <div class="status-row">
-        <span id="status-dot" class="status-dot online"></span>
-        <span id="status-text">Ready (Mock AI)</span>
+        <span id="status-dot" class="status-dot online" aria-hidden="true"></span>
+        <span id="status-text">Ready</span>
       </div>
-      <button id="settings-btn" class="settings-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button type="button" id="settings-btn" class="settings-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
@@ -57,66 +56,64 @@
   <!-- ========== Main ========== -->
   <div class="main">
     <header class="topbar">
-      <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button type="button" id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <line x1="3" y1="12" x2="21" y2="12"/>
           <line x1="3" y1="6" x2="21" y2="6"/>
           <line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
       </button>
-      <span class="topbar-title">Personal Coding AI</span>
+      <span class="topbar-title">Nova</span>
       <span class="topbar-badge">V1.0</span>
     </header>
 
     <div id="chat-area" class="chat-area">
-      <!-- Empty state -->
       <div id="empty-state" class="empty-state">
-        <div class="empty-icon">🤖</div>
+        <div class="empty-icon" aria-hidden="true">✦</div>
         <h2>How can I help you code today?</h2>
         <p>
           Ask questions, paste code snippets, request bug analysis,
           or get better implementation ideas.
         </p>
         <div class="suggestion-chips">
-          <button class="chip" data-prompt="این تابع رو توضیح بده و اگر باگی داره بگو">Explain & find bugs</button>
-          <button class="chip" data-prompt="یک مثال ساده از decorator در Python بزن">Python decorator example</button>
-          <button class="chip" data-prompt="چطور این کد رو تمیزتر بنویسم؟">How to refactor this?</button>
+          <button type="button" class="chip" data-prompt="این تابع رو توضیح بده و اگر باگی داره بگو">Explain &amp; find bugs</button>
+          <button type="button" class="chip" data-prompt="یک مثال ساده از decorator در Python بزن">Python decorator example</button>
+          <button type="button" class="chip" data-prompt="چطور این کد رو تمیزتر بنویسم؟">How to refactor this?</button>
         </div>
       </div>
 
-      <!-- Messages -->
-      <div id="messages" class="messages" style="display:none;"></div>
+      <div id="messages" class="messages" style="display:none;" role="log" aria-live="polite"></div>
     </div>
 
-    <!-- Composer -->
     <div class="composer-wrap">
       <div id="composer" class="composer">
         <textarea
           id="message-input"
           rows="1"
-          placeholder="Message Personal Coding AI… (Shift+Enter for new line)"
+          placeholder="Message Nova… (Shift+Enter for new line)"
           maxlength="8000"
+          aria-label="Message input"
         ></textarea>
-        <button id="send-btn" class="send-btn" aria-label="Send message">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <button type="button" id="send-btn" class="send-btn" aria-label="Send message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
             <line x1="22" y1="2" x2="11" y2="13"/>
             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
         </button>
       </div>
       <div class="composer-hint">
-        V1.0 · Mock AI · Press Enter to send
+        Nova V1.0 · Context-aware Mock AI · Enter to send
       </div>
     </div>
   </div>
 
   <!-- ========== Settings Modal ========== -->
-  <div id="settings-modal" class="modal-overlay">
+  <div id="settings-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="modal">
       <div class="modal-header">
-        <h3>Settings</h3>
-        <button id="close-settings" class="modal-close" aria-label="Close">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <h3 id="settings-title">Settings</h3>
+        <button type="button" id="close-settings" class="modal-close" aria-label="Close settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -131,24 +128,21 @@
         </div>
         <div class="form-group">
           <label>AI Mode</label>
-          <input type="text" value="Mock AI (V1.0)" disabled />
+          <input type="text" value="Context-aware Mock (V1.0)" disabled />
         </div>
         <p class="modal-note">
-          In Version 1 the AI responses are simulated locally.
-          Real LLM connection will be added in the next versions
-          using the Python backend already present in this repository.
+          In Version 1, Nova simulates replies locally using conversation context.
+          Real LLM connection will use the Python backend already in this repository.
         </p>
       </div>
     </div>
   </div>
 
-  <!-- Scripts (order matters) -->
   <script src="js/config.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/app.js"></script>
 
-  <!-- Suggestion chips → fill input -->
   <script>
     document.querySelectorAll(".chip").forEach((chip) => {
       chip.addEventListener("click", () => {
@@ -156,7 +150,6 @@
         if (input) {
           input.value = chip.dataset.prompt || chip.textContent;
           input.focus();
-          // Trigger auto-resize if available
           if (typeof UI !== "undefined") UI.autoResizeTextarea();
         }
       });
