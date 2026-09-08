@@ -2,7 +2,7 @@
  * ui.js – DOM helpers and UI state management
  */
 
-const UI = (() => {
+const UI = window.UI = (() => {
   // Cached elements
   let els = {};
 

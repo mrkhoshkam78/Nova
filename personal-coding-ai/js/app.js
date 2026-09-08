@@ -8,17 +8,14 @@
   function bindEvents() {
     const els = UI.getElements();
 
-    // Sidebar toggle
     if (els.sidebarToggle) {
       els.sidebarToggle.addEventListener("click", () => UI.toggleSidebar());
     }
 
-    // Mobile overlay closes sidebar
     if (els.mobileOverlay) {
       els.mobileOverlay.addEventListener("click", () => UI.closeSidebar());
     }
 
-    // New Chat
     if (els.newChatBtn) {
       els.newChatBtn.addEventListener("click", () => {
         Chat.newChat();
@@ -26,7 +23,6 @@
       });
     }
 
-    // Send button
     if (els.sendBtn) {
       els.sendBtn.addEventListener("click", () => {
         const text = els.messageInput ? els.messageInput.value : "";
@@ -34,7 +30,6 @@
       });
     }
 
-    // Enter to send (Shift+Enter for newline)
     if (els.messageInput) {
       els.messageInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -48,7 +43,6 @@
       });
     }
 
-    // Settings
     if (els.settingsBtn) {
       els.settingsBtn.addEventListener("click", () => UI.openSettings());
     }
@@ -61,12 +55,19 @@
       });
     }
 
-    // Responsive: close sidebar on large resize if needed
+    // Escape closes settings / sidebar on mobile
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        UI.closeSettings();
+        if (UI.isMobile()) UI.closeSidebar();
+      }
+    });
+
     window.addEventListener("resize", () => {
       if (!UI.isMobile()) {
-        // On desktop keep sidebar behavior controlled by CSS
         document.body.classList.remove("sidebar-open");
         if (els.mobileOverlay) els.mobileOverlay.classList.remove("visible");
+        if (els.sidebar) els.sidebar.classList.remove("open");
       }
     });
   }
@@ -76,10 +77,8 @@
     bindEvents();
     Chat.init();
 
-    // Status
-    UI.setStatus(true, "Ready (Mock AI)");
+    UI.setStatus(true, "Ready");
 
-    // Focus input
     const input = UI.getElements().messageInput;
     if (input) input.focus();
 
@@ -89,7 +88,6 @@
     );
   }
 
-  // Start when DOM is ready
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else {
