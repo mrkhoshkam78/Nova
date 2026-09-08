@@ -134,6 +134,8 @@
 
     UI.cacheElements();
     UI.loadTheme();
+    const badge = document.getElementById("version-badge");
+    if (badge && AppConfig.version) badge.textContent = "V" + AppConfig.version;
     bindEvents();
     Chat.init();
 
