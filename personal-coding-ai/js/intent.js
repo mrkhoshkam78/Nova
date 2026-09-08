@@ -3,14 +3,14 @@
  */
 const Intent = window.Intent = (() => {
   const CODE_HINT = /```|def\s+\w+|function\s+\w+|class\s+\w+|const\s+\w+|let\s+\w+|var\s+\w+|import\s+|from\s+\w+\s+import|public\s+class|fn\s+\w+|#include|console\.log|print\(|return\s+|async\s+|await\s+/i;
-  const BUG_HINT = /\b(bug|error|exception|traceback|stack\s*trace|crash|fail|خطا|باگ|اشکال|مشکل)\b/i;
-  const REFACTOR_HINT = /\b(refactor|clean|improve|optimize|تمیز|بهین|بازنویسی)\b/i;
-  const EXPLAIN_HINT = /\b(explain|what\s+is|how\s+(does|to)|چیست|چیه|توضیح|چطور)\b/i;
-  const GENERATE_HINT = /\b(write|create|generate|implement|بنویس|بساز|پیاده‌سازی|مثال)\b/i;
-  const REVIEW_HINT = /\b(review|check|analyze|بررسی|تحلیل)\b/i;
+  const BUG_HINT = /(bug|error|exception|traceback|stack\s*trace|crash|fail|خطا|باگ|اشکال|مشکل)/i;
+  const REFACTOR_HINT = /(refactor|clean|improve|optimize|تمیز|بهین|بازنویسی)/i;
+  const EXPLAIN_HINT = /(explain|what\s+is|how\s+(does|to)|چیست|چیه|توضیح|چطور)/i;
+  const GENERATE_HINT = /(write|create|generate|implement|بنویس|بساز|پیاده‌سازی|مثال)/i;
+  const REVIEW_HINT = /(review|check|analyze|بررسی|تحلیل)/i;
   const GREETING = /^(سلام|hi|hello|hey|درود)[\s!.،,]*$/i;
   const INTRO = /خودت را معرفی|introduce yourself|who are you|کی هستی/i;
-  const GENERAL_CHAT = /\b(چطوری|حالت|ممنون|مرسی|خداحافظ|bye|thanks|thank you|how are you)\b/i;
+  const GENERAL_CHAT = /(چطوری|حالت|خوبی|ممنون|مرسی|خداحافظ|bye|thanks|thank you|how are you)/i;
 
   function hasCodeInHistory(messages) {
     if (!messages || !messages.length) return false;
@@ -48,11 +48,13 @@ const Intent = window.Intent = (() => {
       return { intent: "file-analysis", confidence: 0.88, reason: "analyze uploaded file" };
     }
 
-    if (BUG_HINT.test(t) && (hasCode || hasFile || CODE_HINT.test(t))) {
-      return { intent: "debug", confidence: 0.9, reason: "bug report with code context" };
-    }
-    if (BUG_HINT.test(t) && !hasCode && !hasFile) {
-      return { intent: "debug", confidence: 0.7, reason: "bug mention without code" };
+    if (BUG_HINT.test(t)) {
+      const codeCtx = hasCode || hasFile || CODE_HINT.test(t) || /(code|کد|function|تابع)/i.test(t);
+      return {
+        intent: "debug",
+        confidence: codeCtx ? 0.9 : 0.75,
+        reason: codeCtx ? "bug report with code context" : "bug mention",
+      };
     }
 
     if (REFACTOR_HINT.test(t)) return { intent: "refactor", confidence: 0.85, reason: "refactor request" };

@@ -9,13 +9,40 @@ const Chat = window.Chat = (() => {
 
   const STORAGE_KEY = "nova_conversations_v1";
 
-  function saveToStorage() {
+  let _saveTimer = null;
+
+  function compactConversationsForStorage() {
+    // Truncate large file bodies to keep localStorage fast and under quota
+    return conversations.map((c) => ({
+      id: c.id,
+      title: c.title,
+      createdAt: c.createdAt,
+      messages: c.messages,
+      files: (c.files || []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        ext: f.ext,
+        language: f.language,
+        kind: f.kind,
+        content: typeof f.content === "string" ? f.content.slice(0, 40000) : "",
+      })),
+    }));
+  }
+
+  function saveToStorageImmediate() {
     try {
-      const payload = { conversations, activeId };
+      const payload = { conversations: compactConversationsForStorage(), activeId };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (_) {
       // private mode / quota – ignore
     }
+  }
+
+  function saveToStorage() {
+    if (_saveTimer) clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(saveToStorageImmediate, 120);
   }
 
   function loadFromStorage() {
@@ -41,10 +68,9 @@ const Chat = window.Chat = (() => {
     return "c_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
+  const _escMap = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
   function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
+    return String(text || "").replace(/[&<>"']/g, (ch) => _escMap[ch]);
   }
 
   /**
@@ -209,6 +235,18 @@ const Chat = window.Chat = (() => {
         }
       });
     });
+  }
+
+
+  function appendMessage(role, content, isLoading) {
+    const container = UI.getElements().messagesContainer;
+    if (!container) return null;
+    UI.showEmptyState(false);
+    const el = createMessageElement(role, content, !!isLoading);
+    container.appendChild(el);
+    attachCopyHandlers(el);
+    UI.scrollToBottom(false);
+    return el;
   }
 
   function renderMessages() {
@@ -702,7 +740,13 @@ const Chat = window.Chat = (() => {
     });
     updateTitleFromFirstMessage(conv, text);
     renderConversationList();
-    renderMessages();
+
+    // Incremental UI: first message needs full layout switch; later only append
+    if (conv.messages.length <= 1) {
+      renderMessages();
+    } else {
+      appendMessage("user", text, false);
+    }
 
     isProcessing = true;
     UI.setComposerDisabled(true);
@@ -731,22 +775,35 @@ const Chat = window.Chat = (() => {
           Math.random() * (AppConfig.ui.typingDelayMax - AppConfig.ui.typingDelayMin);
         await delay(wait);
         const tc = targetConv();
-        const intentNow = window.Intent
-          ? Intent.detect(text, { messages: tc.messages, files: tc.files || [] })
-          : { intent: "general" };
+        // Reuse intent computed at send time (stored on last user message meta)
+        const lastUser = tc.messages.filter((m) => m.role === "user").slice(-1)[0];
+        const intentNow = (lastUser && lastUser.meta && lastUser.meta.intent)
+          ? { intent: lastUser.meta.intent }
+          : (window.Intent
+            ? Intent.detect(text, { messages: tc.messages, files: tc.files || [] })
+            : { intent: "general" });
 
-        if (
-          (intentNow.intent === "file-analysis" || intentNow.intent === "debug" || intentNow.intent === "code-review") &&
+        if (intentNow.intent === "debug" && window.Debugger) {
+          const lastFile = (tc.files && tc.files.length) ? tc.files[tc.files.length - 1] : null;
+          const codeFromMsg = (text.match(/```[\w]*\n([\s\S]*?)```/) || [])[1] || null;
+          const stackMatch = text.match(/((?:Traceback[\s\S]+)|(?:\s+at\s+.+:\d+[\s\S]*))/);
+          const session = Debugger.run({
+            sourceCode: codeFromMsg || (lastFile && lastFile.content) || null,
+            files: tc.files || [],
+            errorMessage: text,
+            stackTrace: stackMatch ? stackMatch[0] : null,
+            userDescription: text,
+            expectedBehavior: null,
+            actualBehavior: null,
+          });
+          reply = Debugger.formatReport(session);
+        } else if (
+          (intentNow.intent === "file-analysis" || intentNow.intent === "code-review") &&
           tc.files && tc.files.length && window.Analysis
         ) {
           const f = tc.files[tc.files.length - 1];
           const report = Analysis.analyze(f);
           reply = Analysis.formatReport(f, report);
-          if (intentNow.intent === "debug") {
-            reply += "\n\n### Debug notes\n";
-            reply += "Static findings above are **not** runtime proof. ";
-            reply += "Paste the exact error/stack trace for a tighter root-cause guess.";
-          }
         } else if (intentNow.intent === "general" || intentNow.intent === "greeting" || intentNow.intent === "intro") {
           reply = generateContextualReply(text, tc.messages);
         } else {
@@ -806,7 +863,11 @@ const Chat = window.Chat = (() => {
     saveToStorage();
 
     if (activeId === convIdAtSend) {
-      renderMessages();
+      // Incremental update: drop loading + append assistant (avoid full list rebuild)
+      const loading = document.getElementById("loading-msg");
+      if (loading) loading.remove();
+      appendMessage("assistant", reply, false);
+      renderConversationList();
     } else {
       renderConversationList();
     }
