@@ -55,6 +55,27 @@
       });
     }
 
+
+    // Theme
+    if (els.themeSelect) {
+      els.themeSelect.addEventListener("change", () => {
+        UI.applyTheme(els.themeSelect.value);
+      });
+    }
+
+    // Gateway URL
+    if (els.gatewayUrl) {
+      els.gatewayUrl.value = (AppConfig.api && AppConfig.api.baseUrl) || "";
+      els.gatewayUrl.addEventListener("change", () => {
+        const url = (els.gatewayUrl.value || "").trim().replace(/\/$/, "");
+        if (url) {
+          AppConfig.api.baseUrl = url;
+          try { localStorage.setItem("nova_gateway_url", url); } catch (_) {}
+          checkGateway();
+        }
+      });
+    }
+
     // Escape closes settings / sidebar on mobile
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
@@ -74,30 +95,45 @@
   }
 
   async function checkGateway() {
+    const rt = window.NovaRuntime || (window.NovaRuntime = {});
     const base = (AppConfig.api && AppConfig.api.baseUrl) || "";
+
     if (AppConfig.useMockAI) {
+      rt.gatewayOnline = false;
+      rt.forceMock = true;
       UI.setStatus(true, "Ready (Mock)");
       return;
     }
+
     try {
       const res = await fetch(base.replace(/\/$/, "") + (AppConfig.api.healthEndpoint || "/health"), {
         method: "GET",
       });
       if (!res.ok) throw new Error("bad status");
       const data = await res.json();
+      rt.gatewayOnline = true;
+      rt.llmConfigured = !!data.llm_configured;
+      rt.forceMock = false;
       if (data.llm_configured) {
         UI.setStatus(true, "Ready · " + (data.model || "LLM"));
       } else {
         UI.setStatus(false, "Gateway up · set AI_API_KEY");
       }
     } catch (_) {
-      UI.setStatus(false, "Gateway offline");
+      rt.gatewayOnline = false;
+      rt.llmConfigured = false;
+      if (AppConfig.mockFallbackOnOffline) {
+        UI.setStatus(false, "Gateway offline · Mock");
+      } else {
+        UI.setStatus(false, "Gateway offline");
+      }
     }
   }
 
   function boot() {
 
     UI.cacheElements();
+    UI.loadTheme();
     bindEvents();
     Chat.init();
 

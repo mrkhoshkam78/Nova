@@ -672,23 +672,25 @@ const Chat = window.Chat = (() => {
     let usedMock = false;
 
     try {
-      if (AppConfig.useMockAI) {
+      const rt = window.NovaRuntime || {};
+      const preferMock = AppConfig.useMockAI || rt.forceMock || (!rt.gatewayOnline && AppConfig.mockFallbackOnOffline);
+
+      if (preferMock) {
         usedMock = true;
         const wait =
           AppConfig.ui.typingDelayMin +
           Math.random() * (AppConfig.ui.typingDelayMax - AppConfig.ui.typingDelayMin);
         await delay(wait);
         reply = generateContextualReply(text, targetConv().messages);
+        if (!rt.gatewayOnline && !AppConfig.useMockAI) {
+          reply = "_(Gateway offline — local mock)_\n\n" + reply;
+        }
       } else {
-        // Streaming UI: replace loading bubble with live text
         let streamBody = null;
         reply = await callLlmGateway(targetConv(), (token, full) => {
           const loading = document.getElementById("loading-msg");
           if (loading && activeId === convIdAtSend) {
             if (!streamBody) {
-              loading.innerHTML = "";
-              const avatar = loading.querySelector(".message-avatar");
-              // recreate structure
               loading.className = "message message-assistant";
               loading.innerHTML = "";
               const av = document.createElement("div");
@@ -708,12 +710,14 @@ const Chat = window.Chat = (() => {
         }
       }
     } catch (err) {
-      // Optional mock fallback only when gateway unreachable and explicitly allowed
       const msg = (err && err.message) || "Unknown error";
-      const allowFallback = AppConfig.useMockAI === true;
-      if (allowFallback) {
+      const offline = /Cannot reach Nova gateway|Failed to fetch|NetworkError/i.test(msg);
+      if (offline && AppConfig.mockFallbackOnOffline) {
+        if (window.NovaRuntime) window.NovaRuntime.gatewayOnline = false;
         usedMock = true;
-        reply = generateContextualReply(text, targetConv().messages);
+        reply = "_(Gateway offline — local mock)_\n\n" +
+          generateContextualReply(text, targetConv().messages);
+        if (typeof UI !== "undefined") UI.setStatus(false, "Gateway offline · Mock");
       } else {
         reply = "⚠️ " + msg;
       }

@@ -7,12 +7,13 @@ const AppConfig = window.AppConfig = {
   appName: "Nova",
   version: "2.0.0",
 
-  // Prefer real LLM via gateway. Mock is development fallback only.
+  // Prefer real LLM via gateway. Mock only when gateway is unreachable.
   useMockAI: false,
+  // If gateway is down, fall back to local mock so UI remains usable
+  mockFallbackOnOffline: true,
 
   api: {
-    // Public gateway base URL (no secrets)
-    baseUrl: "http://127.0.0.1:8000",
+    baseUrl: localStorage.getItem("nova_gateway_url") || "http://127.0.0.1:8000",
     chatEndpoint: "/api/chat",
     healthEndpoint: "/health",
     timeoutMs: 120000,
@@ -26,6 +27,9 @@ const AppConfig = window.AppConfig = {
   },
 };
 
-Object.freeze(AppConfig);
-Object.freeze(AppConfig.api);
-Object.freeze(AppConfig.ui);
+// Runtime flags (mutable)
+window.NovaRuntime = {
+  gatewayOnline: false,
+  llmConfigured: false,
+  forceMock: false,
+};

@@ -25,6 +25,7 @@ const UI = window.UI = (() => {
       settingsModal: document.getElementById("settings-modal"),
       closeSettingsBtn: document.getElementById("close-settings"),
       themeSelect: document.getElementById("theme-select"),
+      gatewayUrl: document.getElementById("gateway-url"),
     };
   }
 
@@ -112,6 +113,22 @@ const UI = window.UI = (() => {
     });
   }
 
+
+  function applyTheme(theme) {
+    const t = theme === "light" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem("nova_theme", t); } catch (_) {}
+    if (els.themeSelect) els.themeSelect.value = t;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", t === "light" ? "#f6f8fa" : "#0f1117");
+  }
+
+  function loadTheme() {
+    let t = "dark";
+    try { t = localStorage.getItem("nova_theme") || "dark"; } catch (_) {}
+    applyTheme(t);
+  }
+
   function getElements() {
     return els;
   }
@@ -130,6 +147,8 @@ const UI = window.UI = (() => {
     openSettings,
     closeSettings,
     scrollToBottom,
+    applyTheme,
+    loadTheme,
     getElements,
   };
 })();
