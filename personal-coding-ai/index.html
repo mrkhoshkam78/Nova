@@ -122,17 +122,22 @@
       <div class="modal-body">
         <div class="form-group">
           <label for="theme-select">Theme</label>
-          <select id="theme-select" disabled>
-            <option value="dark" selected>Dark (default)</option>
+          <select id="theme-select">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
           </select>
         </div>
         <div class="form-group">
+          <label for="gateway-url">Gateway URL</label>
+          <input type="text" id="gateway-url" placeholder="http://127.0.0.1:8000" />
+        </div>
+        <div class="form-group">
           <label>AI Mode</label>
-          <input type="text" value="Context-aware Mock (V2.0)" disabled />
+          <input type="text" id="ai-mode-label" value="LLM gateway (V2.0)" disabled />
         </div>
         <p class="modal-note">
-          Nova V2 routes chat through a secure local LLM gateway (server.py).
-          API keys stay on the server. Start the gateway before chatting.
+          Run <code>python server.py</code> with AI_API_KEY in .env.
+          If the gateway is offline, Nova falls back to local mock automatically.
         </p>
       </div>
     </div>
