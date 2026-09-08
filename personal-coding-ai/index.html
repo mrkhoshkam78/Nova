@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="css/style.css?v=2.02" />
+  <link rel="stylesheet" href="css/style.css?v=2.02.1" />
 </head>
 <body>
 
@@ -83,6 +83,8 @@
           <button type="button" class="chip" data-prompt="این تابع رو توضیح بده و اگر باگی داره بگو">Explain &amp; find bugs</button>
           <button type="button" class="chip" data-prompt="یک مثال ساده از decorator در Python بزن">Python decorator example</button>
           <button type="button" class="chip" data-prompt="چطور این کد رو تمیزتر بنویسم؟">How to refactor this?</button>
+          <button type="button" class="chip" data-debug-sample="py-indexerror">Debug: Python IndexError</button>
+          <button type="button" class="chip" data-debug-sample="js-null-access">Debug: JS null access</button>
         </div>
       </div>
 
@@ -154,17 +156,37 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=2.02"></script>
-  <script src="js/intent.js?v=2.02"></script>
-  <script src="js/upload.js?v=2.02"></script>
-  <script src="js/analysis.js?v=2.02"></script>
-  <script src="js/ui.js?v=2.02"></script>
-  <script src="js/chat.js?v=2.02"></script>
-  <script src="js/app.js?v=2.02"></script>
+  <script src="js/config.js?v=2.02.1"></script>
+  <script src="js/intent.js?v=2.02.1"></script>
+  <script src="js/upload.js?v=2.02.1"></script>
+  <script src="js/analysis.js?v=2.02.1"></script>
+  <script src="js/debugger.js?v=2.02.1"></script>
+  <script src="js/ui.js?v=2.02.1"></script>
+  <script src="js/chat.js?v=2.02.1"></script>
+  <script src="js/app.js?v=2.02.1"></script>
 
   <script>
     document.querySelectorAll(".chip").forEach((chip) => {
       chip.addEventListener("click", () => {
+        const sampleId = chip.getAttribute("data-debug-sample");
+        if (sampleId && window.Debugger && Debugger.runSample) {
+          const session = Debugger.runSample(sampleId);
+          const report = Debugger.formatReport(session);
+          const sample = (Debugger.getSamples() || []).find((s) => s.id === sampleId);
+          const input = document.getElementById("message-input");
+          // Prefer full debug via chat so history is preserved
+          if (input && window.Chat) {
+            const codeHint = sampleId === "py-indexerror"
+              ? "```python\ndef first_item(items):\n    return items[0]\n\nprint(first_item([]))\n```\n\nIndexError: list index out of range"
+              : sampleId === "js-null-access"
+              ? "```javascript\nfunction getName(user) {\n  return user.name.toUpperCase();\n}\nconsole.log(getName(null));\n```\n\nTypeError: Cannot read properties of null"
+              : (chip.dataset.prompt || "Debug this");
+            input.value = "این کد باگ داره، تحلیل کن:\n" + codeHint;
+            if (typeof UI !== "undefined") UI.autoResizeTextarea();
+            Chat.sendMessage(input.value);
+          }
+          return;
+        }
         const input = document.getElementById("message-input");
         if (input) {
           input.value = chip.dataset.prompt || chip.textContent;
