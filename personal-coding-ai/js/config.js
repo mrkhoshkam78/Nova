@@ -5,7 +5,7 @@
 
 const AppConfig = window.AppConfig = {
   appName: "Nova",
-  version: "2.0.1",
+  version: "2.02",
 
   // Prefer real LLM via gateway. Mock only when gateway is unreachable.
   useMockAI: false,

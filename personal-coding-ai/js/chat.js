@@ -24,7 +24,11 @@ const Chat = window.Chat = (() => {
       if (!raw) return false;
       const data = JSON.parse(raw);
       if (!data || !Array.isArray(data.conversations)) return false;
-      conversations = data.conversations;
+      conversations = data.conversations.map((c) => ({
+        ...c,
+        files: Array.isArray(c.files) ? c.files : [],
+        messages: Array.isArray(c.messages) ? c.messages : [],
+      }));
       activeId = data.activeId || (conversations[0] && conversations[0].id) || null;
       return conversations.length > 0;
     } catch (_) {
@@ -125,6 +129,7 @@ const Chat = window.Chat = (() => {
       id: generateId(),
       title,
       messages: [],
+      files: [],
       createdAt: Date.now(),
     };
     conversations.unshift(conv);
@@ -362,7 +367,16 @@ const Chat = window.Chat = (() => {
    */
   function generateContextualReply(userText, history) {
     const ctx = buildContextSummary(history);
-    const intent = detectIntent(userText);
+    let intent = detectIntent(userText);
+    if (window.Intent) {
+      const smart = Intent.detect(userText, { messages: history, files: (getActive() && getActive().files) || [] });
+      if (smart && smart.intent) intent = smart.intent;
+    }
+    // Pure general chat: do not force coding topics
+    if (intent === "general" && !(ctx && ctx.topics && ctx.topics.length)) {
+      return "متوجه شدم.\n\nاگر سؤال غیرفنی است همین‌جا جواب می‌دهم؛ اگر کد یا خطایی داری paste کن تا دقیق‌تر کمک کنم.\n\n" +
+        "پیام تو: «" + userText.slice(0, 200) + (userText.length > 200 ? "…" : "") + "»";
+    }
     const hasContext = ctx && ctx.messageCount > 0;
     const topicHint = hasContext && ctx.topics.length
       ? ctx.topics.slice(0, 3).join(", ")
@@ -549,7 +563,17 @@ const Chat = window.Chat = (() => {
     const body = {
       messages: historyForApi(conv),
       stream: true,
-      files: conv.fileContext || null,
+      files: (conv.files || []).slice(-3).map((f) => ({
+        path: f.name,
+        content: (f.content || "").slice(0, 80000),
+        language: f.language || "",
+      })),
+      intent: (window.Intent
+        ? Intent.detect(
+            (conv.messages.filter((m) => m.role === "user").slice(-1)[0] || {}).content || "",
+            { messages: conv.messages, files: conv.files || [] }
+          )
+        : null),
     };
 
     let response;
@@ -637,7 +661,8 @@ const Chat = window.Chat = (() => {
   // ---------- Public actions ----------
   async function sendMessage(text) {
     text = (text || "").trim();
-    if (!text || isProcessing) return;
+    const pendingFile = window.Upload ? Upload.getPending() : null;
+    if ((!text && !pendingFile) || isProcessing) return;
 
     if (text.length > AppConfig.ui.maxMessageLength) {
       text = text.slice(0, AppConfig.ui.maxMessageLength);
@@ -647,10 +672,34 @@ const Chat = window.Chat = (() => {
     if (!conv) {
       conv = createConversation();
     }
+    if (!conv.files) conv.files = [];
 
     const convIdAtSend = conv.id;
 
-    conv.messages.push({ role: "user", content: text, ts: Date.now() });
+    // Attach pending file to conversation
+    if (pendingFile) {
+      conv.files.push(pendingFile);
+      if (!text) {
+        text = "Please analyze this file: " + pendingFile.name;
+      }
+      if (window.Upload) Upload.clearPending();
+      if (typeof UI !== "undefined" && UI.renderAttachPreview) UI.renderAttachPreview(null);
+    }
+
+    const intentInfo = window.Intent
+      ? Intent.detect(text, { messages: conv.messages, files: conv.files })
+      : { intent: "general", confidence: 0.5 };
+
+    conv.messages.push({
+      role: "user",
+      content: text,
+      ts: Date.now(),
+      meta: {
+        intent: intentInfo.intent,
+        hasFile: !!pendingFile,
+        fileName: pendingFile ? pendingFile.name : undefined,
+      },
+    });
     updateTitleFromFirstMessage(conv, text);
     renderConversationList();
     renderMessages();
@@ -681,7 +730,28 @@ const Chat = window.Chat = (() => {
           AppConfig.ui.typingDelayMin +
           Math.random() * (AppConfig.ui.typingDelayMax - AppConfig.ui.typingDelayMin);
         await delay(wait);
-        reply = generateContextualReply(text, targetConv().messages);
+        const tc = targetConv();
+        const intentNow = window.Intent
+          ? Intent.detect(text, { messages: tc.messages, files: tc.files || [] })
+          : { intent: "general" };
+
+        if (
+          (intentNow.intent === "file-analysis" || intentNow.intent === "debug" || intentNow.intent === "code-review") &&
+          tc.files && tc.files.length && window.Analysis
+        ) {
+          const f = tc.files[tc.files.length - 1];
+          const report = Analysis.analyze(f);
+          reply = Analysis.formatReport(f, report);
+          if (intentNow.intent === "debug") {
+            reply += "\n\n### Debug notes\n";
+            reply += "Static findings above are **not** runtime proof. ";
+            reply += "Paste the exact error/stack trace for a tighter root-cause guess.";
+          }
+        } else if (intentNow.intent === "general" || intentNow.intent === "greeting" || intentNow.intent === "intro") {
+          reply = generateContextualReply(text, tc.messages);
+        } else {
+          reply = generateContextualReply(text, tc.messages);
+        }
         if (!rt.gatewayOnline && !AppConfig.useMockAI) {
           reply = "_(Gateway offline — local mock)_\n\n" + reply;
         }

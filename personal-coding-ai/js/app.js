@@ -56,6 +56,24 @@
     }
 
 
+
+    // File upload
+    if (els.uploadBtn && els.fileInput) {
+      els.uploadBtn.addEventListener("click", () => els.fileInput.click());
+      els.fileInput.addEventListener("change", async () => {
+        const file = els.fileInput.files && els.fileInput.files[0];
+        els.fileInput.value = "";
+        if (!file) return;
+        try {
+          const pending = await Upload.pickAndRead(file);
+          UI.renderAttachPreview(pending);
+        } catch (err) {
+          alert((err && err.message) || "Upload failed");
+          UI.renderAttachPreview(null);
+        }
+      });
+    }
+
     // Theme
     if (els.themeSelect) {
       els.themeSelect.addEventListener("change", () => {

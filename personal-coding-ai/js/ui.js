@@ -26,6 +26,11 @@ const UI = window.UI = (() => {
       closeSettingsBtn: document.getElementById("close-settings"),
       themeSelect: document.getElementById("theme-select"),
       gatewayUrl: document.getElementById("gateway-url"),
+      mainPanel: document.getElementById("main-panel"),
+      composerWrap: document.getElementById("composer-wrap"),
+      uploadBtn: document.getElementById("upload-btn"),
+      fileInput: document.getElementById("file-input"),
+      attachPreview: document.getElementById("attach-preview"),
     };
   }
 
@@ -70,8 +75,40 @@ const UI = window.UI = (() => {
       els.emptyState.style.display = show ? "flex" : "none";
     }
     if (els.messagesContainer) {
-      els.messagesContainer.style.display = show ? "none" : "flex";
+      els.messagesContainer.style.display = show ? "none" : "block";
     }
+    if (els.chatArea) {
+      els.chatArea.classList.toggle("chat-empty", !!show);
+    }
+    setEmptyLayout(!!show);
+  }
+
+  /** Center composer when conversation is empty; pin to bottom when active. */
+  function setEmptyLayout(isEmpty) {
+    const main = els.mainPanel || document.getElementById("main-panel");
+    if (main) main.classList.toggle("is-empty", !!isEmpty);
+  }
+
+  function renderAttachPreview(file) {
+    const box = els.attachPreview;
+    if (!box) return;
+    if (!file) {
+      box.hidden = true;
+      box.innerHTML = "";
+      return;
+    }
+    const size = window.Upload ? Upload.formatSize(file.size) : file.size + " B";
+    box.hidden = false;
+    box.innerHTML =
+      '<span class="attach-name"></span>' +
+      '<span class="attach-meta"></span>' +
+      '<button type="button" class="attach-remove" aria-label="Remove file">×</button>';
+    box.querySelector(".attach-name").textContent = file.name;
+    box.querySelector(".attach-meta").textContent = (file.language || file.ext || "") + " · " + size;
+    box.querySelector(".attach-remove").onclick = () => {
+      if (window.Upload) Upload.clearPending();
+      renderAttachPreview(null);
+    };
   }
 
   function clearMessages() {
@@ -91,6 +128,7 @@ const UI = window.UI = (() => {
   function setComposerDisabled(disabled) {
     if (els.messageInput) els.messageInput.disabled = disabled;
     if (els.sendBtn) els.sendBtn.disabled = disabled;
+    if (els.uploadBtn) els.uploadBtn.disabled = disabled;
   }
 
   function openSettings() {
@@ -141,6 +179,7 @@ const UI = window.UI = (() => {
     toggleSidebar,
     setStatus,
     showEmptyState,
+    setEmptyLayout,
     clearMessages,
     autoResizeTextarea,
     setComposerDisabled,
@@ -149,6 +188,7 @@ const UI = window.UI = (() => {
     scrollToBottom,
     applyTheme,
     loadTheme,
+    renderAttachPreview,
     getElements,
   };
 })();
