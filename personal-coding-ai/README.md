@@ -1,8 +1,8 @@
-# Personal Coding AI
+# Nova
 
-**Version 1.0 – AI Chat Core**
+**Version 2.0 – Real LLM Coding Assistant**
 
-An open-source, modular foundation for a personal coding AI assistant.  
+An open-source, modular foundation for a coding AI assistant (Nova).  
 Talk to it in natural language, paste code snippets, ask for explanations, bug analysis, or better implementations.
 
 > This is **not** a keyword-based chatbot. It uses a real LLM through an OpenAI-compatible provider.
@@ -99,6 +99,26 @@ cp .env.example .env
 | `AI_MAX_TOKENS`  | No       | `2048`                      | Maximum tokens in the reply          |
 
 **Never commit your `.env` file.**
+
+
+## Running Nova V2 (LLM Gateway)
+
+Terminal 1 – start the secure gateway (API key stays on the server):
+
+```bash
+cp .env.example .env   # set AI_API_KEY
+pip install -r requirements.txt
+python server.py
+```
+
+Terminal 2 – open the UI:
+
+```bash
+python -m http.server 8080
+# open http://localhost:8080
+```
+
+The frontend talks only to `http://127.0.0.1:8000` (no secrets in the browser).
 
 ## Running the Project
 
