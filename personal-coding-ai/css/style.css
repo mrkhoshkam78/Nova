@@ -39,6 +39,53 @@
   --transition: 0.2s ease;
 }
 
+/* ---------- Light theme ---------- */
+[data-theme="light"] {
+  --bg-primary: #f6f8fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #eef1f5;
+  --bg-hover: #e6eaf0;
+  --bg-user: #ddf4ff;
+  --bg-ai: #ffffff;
+
+  --border: #d0d7de;
+  --border-light: #e6eaf0;
+
+  --text-primary: #1f2328;
+  --text-secondary: #656d76;
+  --text-muted: #8b949e;
+
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-soft: #6366f122;
+
+  --success: #1a7f37;
+  --danger: #cf222e;
+  --warning: #9a6700;
+
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .code-block {
+  background: #f0f3f6;
+  border-color: var(--border);
+}
+
+[data-theme="light"] .code-block code {
+  color: #1f2328;
+}
+
+[data-theme="light"] .inline-code {
+  background: #eef1f5;
+  color: #0550ae;
+}
+
+[data-theme="light"] .message-user .message-body {
+  border-color: #54aeff66;
+}
+
+
+
 *,
 *::before,
 *::after {
