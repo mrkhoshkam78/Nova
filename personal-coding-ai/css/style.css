@@ -1,5 +1,5 @@
 /* ============================================================
-   Personal Coding AI – V1.0 Styles
+   Nova – V1.0 Styles
    Modern, minimal, coding-assistant aesthetic
    ============================================================ */
 
@@ -683,15 +683,28 @@ textarea {
     position: fixed;
     left: 0;
     top: 0;
-    transform: translateX(-100%);
+    bottom: 0;
+    width: min(var(--sidebar-width), 85vw);
+    min-width: 0;
+    max-width: 320px;
+    transform: translateX(-105%);
+    transition: transform 0.25s ease;
+    z-index: 50;
+    box-shadow: none;
   }
 
   .sidebar.open {
     transform: translateX(0);
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.45);
   }
 
   .sidebar-toggle {
     display: flex;
+  }
+
+  .main {
+    width: 100%;
+    max-width: 100vw;
   }
 
   .chat-area {
@@ -705,11 +718,21 @@ textarea {
   .empty-state {
     margin-top: 6vh;
   }
+
+  body.sidebar-open {
+    overflow: hidden;
+  }
 }
 
 @media (min-width: 768px) {
   .sidebar {
+    position: relative;
     transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-overlay {
+    display: none !important;
   }
 }
 
@@ -727,4 +750,89 @@ textarea {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+
+/* ---------- Extra responsive safeguards ---------- */
+html {
+  overflow-x: hidden;
+}
+
+body {
+  max-width: 100vw;
+}
+
+.main {
+  overflow-x: hidden;
+}
+
+.code-block pre {
+  max-width: 100%;
+  word-break: normal;
+  overflow-wrap: normal;
+  white-space: pre;
+}
+
+.message-body {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.message-body img,
+.message-body pre,
+.message-body table {
+  max-width: 100%;
+}
+
+.composer-wrap {
+  width: 100%;
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: min(var(--sidebar-width), 100vw);
+    min-width: 0;
+  }
+
+  .empty-state {
+    padding: 16px 12px;
+    margin-top: 4vh;
+  }
+
+  .empty-state h2 {
+    font-size: 1.15rem;
+  }
+
+  .suggestion-chips {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chip {
+    text-align: center;
+  }
+
+  .composer {
+    border-radius: 12px;
+  }
+
+  .topbar-title {
+    font-size: 0.9rem;
+  }
+
+  .message {
+    gap: 8px;
+  }
+
+  .message-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .composer-hint {
+    font-size: 0.65rem;
+  }
 }
