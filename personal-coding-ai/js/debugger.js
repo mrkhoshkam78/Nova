@@ -240,18 +240,31 @@ const Debugger = window.Debugger = (() => {
 
     files.forEach((f) => {
       if (window.Analysis) {
-        const report = Analysis.analyze(f);
-        report.issues.forEach((iss) => {
+        const report = (Analysis.analyzeSync ? Analysis.analyzeSync(f) : Analysis.analyze(f));
+        (report.issues || []).forEach((iss) => {
           addEvidence(session, {
-            source: "static_analysis",
+            source: iss.analysisSource || "static_analysis",
             file: f.name,
             line: iss.line,
             message: iss.message,
-            reliability: iss.severity === "confirmed" ? "confirmed" : iss.severity === "likely" ? "high" : "possible",
+            reliability: iss.severity === "confirmed" ? "confirmed" : (iss.severity === "likely" || iss.severity === "high") ? "high" : "possible",
             kind: "static_finding",
             relatedCode: null,
           });
         });
+        if (report.evidence && Array.isArray(report.evidence)) {
+          report.evidence.forEach((ev) => {
+            addEvidence(session, {
+              source: ev.source || "code_engine",
+              file: (ev.location && ev.location.file) || f.name,
+              line: (ev.location && ev.location.line) != null ? ev.location.line : ev.line,
+              message: ev.message,
+              reliability: ev.reliability || "possible",
+              kind: "engine_evidence",
+              relatedCode: (ev.related_symbols || []).join(",") || null,
+            });
+          });
+        }
       }
       // Syntax-ish checks
       if (f.language === "python" && /def\s+\w+\([^)]*$/m.test(f.content || "")) {
@@ -772,10 +785,117 @@ const Debugger = window.Debugger = (() => {
     return intent === "debug" || intent === "bug-report";
   }
 
+
+  async function runRemote(input) {
+    const base = (window.AppConfig && AppConfig.api && AppConfig.api.baseUrl) || "http://127.0.0.1:8000";
+    const body = {
+      source_code: input.sourceCode || input.source_code || null,
+      files: input.files || [],
+      error_message: input.errorMessage || input.error_message || null,
+      stack_trace: input.stackTrace || input.stack_trace || null,
+      user_description: input.userDescription || input.user_description || null,
+      expected_behavior: input.expectedBehavior || input.expected_behavior || null,
+      actual_behavior: input.actualBehavior || input.actual_behavior || null,
+    };
+    const resp = await fetch(base.replace(/\/$/, "") + "/api/debug", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) throw new Error("Debug API " + resp.status);
+    const data = await resp.json();
+    if (!data.ok || !data.session) throw new Error("Invalid debug response");
+    // Map backend session into local shape for UI compatibility
+    const s = data.session;
+    const session = {
+      id: s.id,
+      state: s.state,
+      createdAt: s.created_at,
+      finishedAt: s.finished_at,
+      input: input,
+      classification: {
+        failureType: s.failure_type,
+        expectedBehavior: s.expected_behavior,
+        actualBehavior: s.actual_behavior,
+        hasStackTrace: !!(input.stackTrace || input.stack_trace),
+        hasCode: !!(input.sourceCode || (input.files && input.files.length)),
+        hasErrorMessage: !!(input.errorMessage || input.error_message),
+      },
+      evidence: (s.evidence || []).map(function (e) {
+        return {
+          id: e.id,
+          source: e.source,
+          file: e.file,
+          line: e.line,
+          column: e.column,
+          message: e.message,
+          reliability: e.reliability,
+          kind: e.kind,
+          relatedCode: (e.related_symbols || []).join(",") || null,
+        };
+      }),
+      localization: s.localization ? {
+        errorLocation: {
+          file: s.localization.file,
+          line: s.localization.line,
+          message: s.localization.message,
+        },
+        note: s.localization.note,
+      } : null,
+      hypotheses: (s.hypotheses || []).map(function (h) {
+        return {
+          id: h.id,
+          label: h.label || h.cause,
+          suspectedCause: h.cause,
+          region: (h.related_locations && h.related_locations[0]) || null,
+          supportingEvidenceIds: h.supporting_evidence_ids || [],
+          contradictingEvidenceIds: h.contradicting_evidence_ids || [],
+          confidence: h.confidence,
+          confidenceLabel: h.confidence_level,
+          scores: h.scores || {},
+        };
+      }),
+      rootCause: s.root_cause ? {
+        hypothesisId: s.root_cause.hypothesis_id,
+        summary: s.root_cause.summary,
+        confidence: s.root_cause.confidence,
+        confidenceLabel: s.root_cause.confidence_level,
+        causalChain: s.root_cause.causal_chain,
+        supportingEvidenceIds: s.root_cause.supporting_evidence_ids,
+        region: s.root_cause.region,
+        note: s.root_cause.note,
+      } : null,
+      fix: s.fix ? {
+        strategy: s.fix.strategy,
+        patchHint: s.fix.patch_hint,
+        status: s.fix.status,
+        regressionRisk: s.fix.regression_risk,
+        note: s.fix.note,
+      } : null,
+      limitations: s.limitations || [],
+      runtimeAvailable: !!s.runtime_available,
+      _report: data.report,
+      _llmContext: data.llm_context,
+      _engine: "debug_engine_v2.03",
+    };
+    sessions[session.id] = session;
+    return session;
+  }
+
+  async function runSmart(input) {
+    try {
+      return await runRemote(input || {});
+    } catch (e) {
+      return run(input || {});
+    }
+  }
+
   return {
     STATES,
     createSession,
     run,
+    runSmart,
+    runRemote,
     formatReport,
     toLlmContext,
     shouldRunDebugger,

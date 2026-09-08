@@ -1,6 +1,6 @@
 # Nova
 
-**Version 2.0 – Real LLM Coding Assistant**
+**Version 2.03 – Real LLM Coding Assistant**
 
 An open-source, modular foundation for a coding AI assistant (Nova).  
 Talk to it in natural language, paste code snippets, ask for explanations, bug analysis, or better implementations.
@@ -180,7 +180,7 @@ pytest tests.py -v
 | Version | Focus                              |
 |---------|------------------------------------|
 | **V1.0**    | AI Chat Core (this release)        |
-| V2.0    | Persistent Memory                  |
+| V2.03    | Persistent Memory                  |
 | V3.0    | Project & File Understanding       |
 | V4.0    | Code Analysis Engine               |
 | V5.0    | Tools & Terminal Access            |

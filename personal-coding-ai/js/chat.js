@@ -787,7 +787,7 @@ const Chat = window.Chat = (() => {
           const lastFile = (tc.files && tc.files.length) ? tc.files[tc.files.length - 1] : null;
           const codeFromMsg = (text.match(/```[\w]*\n([\s\S]*?)```/) || [])[1] || null;
           const stackMatch = text.match(/((?:Traceback[\s\S]+)|(?:\s+at\s+.+:\d+[\s\S]*))/);
-          const session = Debugger.run({
+          const dbgInput = {
             sourceCode: codeFromMsg || (lastFile && lastFile.content) || null,
             files: tc.files || [],
             errorMessage: text,
@@ -795,15 +795,23 @@ const Chat = window.Chat = (() => {
             userDescription: text,
             expectedBehavior: null,
             actualBehavior: null,
-          });
-          reply = Debugger.formatReport(session);
+          };
+          let session;
+          if (Debugger.runSmart) {
+            session = await Debugger.runSmart(dbgInput);
+          } else {
+            session = Debugger.run(dbgInput);
+          }
+          reply = (session && session._report) ? session._report : Debugger.formatReport(session);
         } else if (
           (intentNow.intent === "file-analysis" || intentNow.intent === "code-review") &&
           tc.files && tc.files.length && window.Analysis
         ) {
           const f = tc.files[tc.files.length - 1];
-          const report = Analysis.analyze(f);
-          reply = Analysis.formatReport(f, report);
+          const report = Analysis.analyzeSync ? Analysis.analyzeSync(f) : Analysis.analyze(f);
+          // analyze may return a Promise if only async path exists
+          const resolved = (report && typeof report.then === "function") ? await report : report;
+          reply = Analysis.formatReport(f, resolved);
         } else if (intentNow.intent === "general" || intentNow.intent === "greeting" || intentNow.intent === "intro") {
           reply = generateContextualReply(text, tc.messages);
         } else {

@@ -21,7 +21,7 @@ from config import AIConfig
 
 load_dotenv()
 
-app = FastAPI(title="Nova LLM Gateway", version="2.0.0")
+app = FastAPI(title="Nova LLM Gateway", version="2.03")
 
 app.add_middleware(
     CORSMiddleware,
@@ -116,10 +116,66 @@ def health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "service": "nova-gateway",
-        "version": "2.0.0",
+        "version": "2.03",
         "llm_configured": configured,
         "model": os.getenv("AI_MODEL", "gpt-4o-mini"),
+        "code_engine": True,
+        "debug_engine": True,
     }
+
+
+class AnalyzeRequest(BaseModel):
+    content: str = Field(..., max_length=500_000)
+    file_name: Optional[str] = None
+    mime: Optional[str] = None
+    language_hint: Optional[str] = None
+
+
+@app.post("/api/analyze")
+def analyze_code(req: AnalyzeRequest) -> Dict[str, Any]:
+    """Run Code Intelligence Engine on uploaded source."""
+    try:
+        from code_engine import analyze_source, build_llm_context
+        result = analyze_source(
+            req.content,
+            file_name=req.file_name,
+            mime=req.mime,
+            language_hint=req.language_hint,
+        )
+        return {
+            "ok": True,
+            "result": result.to_dict(),
+            "llm_context": build_llm_context(result),
+        }
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {exc}") from exc
+
+
+class DebugRequest(BaseModel):
+    source_code: Optional[str] = None
+    files: Optional[List[Dict[str, Any]]] = None
+    error_message: Optional[str] = None
+    stack_trace: Optional[str] = None
+    user_description: Optional[str] = None
+    expected_behavior: Optional[str] = None
+    actual_behavior: Optional[str] = None
+
+
+@app.post("/api/debug")
+def debug_code(req: DebugRequest) -> Dict[str, Any]:
+    """Run Debugging Intelligence Engine (Phase 2)."""
+    try:
+        from debug_engine import run_debug, build_llm_debug_context, format_debug_report
+        payload = req.model_dump() if hasattr(req, "model_dump") else req.dict()
+        session = run_debug(payload)
+        return {
+            "ok": True,
+            "session": session.to_dict(),
+            "report": format_debug_report(session),
+            "llm_context": build_llm_debug_context(session),
+        }
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Debug failed: {exc}") from exc
 
 
 @app.post("/api/chat")
