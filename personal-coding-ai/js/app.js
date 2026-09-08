@@ -58,6 +58,7 @@
     // Escape closes settings / sidebar on mobile
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
+        if (typeof Chat !== "undefined" && Chat.stopGeneration) Chat.stopGeneration();
         UI.closeSettings();
         if (UI.isMobile()) UI.closeSidebar();
       }
@@ -72,12 +73,36 @@
     });
   }
 
+  async function checkGateway() {
+    const base = (AppConfig.api && AppConfig.api.baseUrl) || "";
+    if (AppConfig.useMockAI) {
+      UI.setStatus(true, "Ready (Mock)");
+      return;
+    }
+    try {
+      const res = await fetch(base.replace(/\/$/, "") + (AppConfig.api.healthEndpoint || "/health"), {
+        method: "GET",
+      });
+      if (!res.ok) throw new Error("bad status");
+      const data = await res.json();
+      if (data.llm_configured) {
+        UI.setStatus(true, "Ready · " + (data.model || "LLM"));
+      } else {
+        UI.setStatus(false, "Gateway up · set AI_API_KEY");
+      }
+    } catch (_) {
+      UI.setStatus(false, "Gateway offline");
+    }
+  }
+
   function boot() {
+
     UI.cacheElements();
     bindEvents();
     Chat.init();
 
-    UI.setStatus(true, "Ready");
+    UI.setStatus(false, "Checking gateway…");
+    checkGateway();
 
     const input = UI.getElements().messageInput;
     if (input) input.focus();

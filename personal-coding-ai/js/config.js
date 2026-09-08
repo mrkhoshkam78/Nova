@@ -1,28 +1,28 @@
 /**
- * config.js – Application configuration & constants
- * Ready for future real API integration.
+ * config.js – Nova V2 application configuration
+ * API keys are NEVER stored here. Only the public gateway URL.
  */
 
 const AppConfig = window.AppConfig = {
   appName: "Nova",
-  version: "1.0.0",
+  version: "2.0.0",
 
-  // Mock mode for V1 (set to false later when real API is connected)
-  useMockAI: true,
+  // Prefer real LLM via gateway. Mock is development fallback only.
+  useMockAI: false,
 
-  // Future API settings (not used in mock mode)
   api: {
-    baseUrl: "",
-    endpoint: "/chat",
-    timeoutMs: 30000,
+    // Public gateway base URL (no secrets)
+    baseUrl: "http://127.0.0.1:8000",
+    chatEndpoint: "/api/chat",
+    healthEndpoint: "/health",
+    timeoutMs: 120000,
   },
 
-  // UI defaults
   ui: {
     sidebarOpenOnDesktop: true,
     maxMessageLength: 8000,
-    typingDelayMin: 500,
-    typingDelayMax: 1100,
+    typingDelayMin: 400,
+    typingDelayMax: 900,
   },
 };
 
