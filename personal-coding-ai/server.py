@@ -21,7 +21,7 @@ from config import AIConfig
 
 load_dotenv()
 
-app = FastAPI(title="Nova LLM Gateway", version="2.03")
+app = FastAPI(title="Nova LLM Gateway", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -113,14 +113,21 @@ def _build_messages(req: ChatRequest) -> List[Dict[str, str]]:
 @app.get("/health")
 def health() -> Dict[str, Any]:
     configured = bool(os.getenv("AI_API_KEY") and os.getenv("AI_API_KEY") != "your_api_key_here")
+    learning_ok = False
+    try:
+        from learning import LearningBrain
+        learning_ok = True
+    except Exception:  # noqa: BLE001
+        pass
     return {
         "status": "ok",
         "service": "nova-gateway",
-        "version": "2.03",
+        "version": "3.0.0",
         "llm_configured": configured,
         "model": os.getenv("AI_MODEL", "gpt-4o-mini"),
         "code_engine": True,
         "debug_engine": True,
+        "learning_brain": learning_ok,
     }
 
 
@@ -163,7 +170,7 @@ class DebugRequest(BaseModel):
 
 @app.post("/api/debug")
 def debug_code(req: DebugRequest) -> Dict[str, Any]:
-    """Run Debugging Intelligence Engine (Phase 2)."""
+    """Run Debugging Intelligence Engine (Phase 3 – evidence + learning)."""
     try:
         from debug_engine import run_debug, build_llm_debug_context, format_debug_report
         payload = req.model_dump() if hasattr(req, "model_dump") else req.dict()

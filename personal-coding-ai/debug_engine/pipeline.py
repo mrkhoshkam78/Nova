@@ -160,8 +160,39 @@ def collect_evidence(session: DebugSession) -> DebugSession:
     return session
 
 
+def _get_learning_brain():
+    """Lazy import so pipeline works even if learning package is absent."""
+    try:
+        from learning import LearningBrain
+        return LearningBrain()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _apply_memory_priors(session: DebugSession, brain) -> None:
+    """Boost/penalize hypotheses from prior experiences. Memory is prior, not truth."""
+    if not brain or not session.related_memories or not session.hypotheses:
+        return
+    for h in session.hypotheses:
+        boost = brain.memory_prior_boost(session.related_memories, h.cause or h.label or "")
+        if boost != 0.0:
+            h.confidence = round(max(0.05, min(0.95, h.confidence + boost)), 3)
+            h.scores = dict(h.scores or {})
+            h.scores["historical"] = boost
+            # recompute level
+            if h.confidence >= 0.90:
+                h.confidence_level = ConfidenceLevel.CONFIRMED
+            elif h.confidence >= 0.70:
+                h.confidence_level = ConfidenceLevel.HIGH_PROBABILITY
+            elif h.confidence >= 0.40:
+                h.confidence_level = ConfidenceLevel.POSSIBLE
+            else:
+                h.confidence_level = ConfidenceLevel.INSUFFICIENT_EVIDENCE
+    session.hypotheses.sort(key=lambda x: x.confidence, reverse=True)
+
+
 def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
-    """Full debugging algorithm."""
+    """Full debugging algorithm with Phase 3 Learning Brain integration."""
     t0 = time.perf_counter()
     if isinstance(input_data, dict):
         inp = DebugInput(
@@ -181,11 +212,21 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
     session.actual_behavior = inp.actual_behavior or inp.error_message or "Failure observed"
     session.runtime_available = False  # no sandbox in this version
     session.limitations.append("No code execution sandbox — results are evidence-based only.")
+    session.limitations.append("Validation is reasoning/static only (no runtime confirmation).")
+
+    brain = _get_learning_brain()
 
     # 1–2 Collect + classify
     collect_evidence(session)
     if session.state == SessionState.INSUFFICIENT_EVIDENCE:
         session.finished_at = time.time()
+        if brain:
+            try:
+                exp = brain.learn_from_session(session)
+                if exp:
+                    session.learning = {"stored": True, "experience_id": exp.id, "status": exp.status.value}
+            except Exception:  # noqa: BLE001
+                pass
         return session
 
     session.failure_type = classify_failure(inp, session.evidence)
@@ -195,6 +236,37 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
     session.localization = localize(inp, session.evidence)
     session.state = SessionState.LOCALIZED
 
+    # 3.5 Retrieve related memories (prior experience only)
+    if brain:
+        try:
+            lang = None
+            if inp.files:
+                lang = (inp.files[0] or {}).get("language")
+            if not lang and inp.source_code:
+                code = inp.source_code
+                if "def " in code or "import " in code:
+                    lang = "python"
+                elif "function " in code or "const " in code:
+                    lang = "javascript"
+            evidence_msgs = [e.message for e in session.evidence if e.message][:15]
+            session.related_memories = brain.retrieve_for_debug(
+                language=lang,
+                error_message=inp.error_message,
+                error_type=session.failure_type.value if session.failure_type else None,
+                problem_text=inp.user_description or session.actual_behavior,
+                evidence_messages=evidence_msgs,
+                limit=5,
+            )
+            session.contradictions = brain.detect_memory_evidence_conflict(
+                session.related_memories, evidence_msgs
+            )
+            if session.contradictions:
+                session.limitations.append(
+                    "Memory/evidence conflicts detected; current evidence takes priority."
+                )
+        except Exception as exc:  # noqa: BLE001
+            session.limitations.append(f"Learning retrieval skipped: {exc}")
+
     # 4 Hypotheses
     session.hypotheses = generate_hypotheses(
         session.failure_type,
@@ -202,6 +274,8 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
         session.localization,
         inp,
     )
+    # Apply historical prior (small boost/penalty only)
+    _apply_memory_priors(session, brain)
     session.state = SessionState.HYPOTHESIZED
 
     # 5 Rank / select root cause candidate
@@ -225,6 +299,13 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
         )
         session.state = SessionState.INSUFFICIENT_EVIDENCE
         session.finished_at = time.time()
+        if brain:
+            try:
+                exp = brain.learn_from_session(session)
+                if exp:
+                    session.learning = {"stored": True, "experience_id": exp.id, "status": exp.status.value}
+            except Exception:  # noqa: BLE001
+                pass
         return session
 
     region = None
@@ -236,6 +317,12 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
             "line": session.localization.line,
         }
 
+    # Drop hypotheses that have zero supporting evidence (Phase 3 rule)
+    session.hypotheses = [
+        h for h in session.hypotheses
+        if h.supporting_evidence_ids or h.confidence_level == ConfidenceLevel.INSUFFICIENT_EVIDENCE
+    ] or session.hypotheses
+
     session.root_cause = RootCauseCandidate(
         hypothesis_id=top.id,
         summary=top.cause,
@@ -246,7 +333,8 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
         region=region,
         note=(
             "Selected from ranked hypotheses using evidence strength. "
-            "Error location is not automatically the root cause."
+            "Error location is not automatically the root cause. "
+            "Memory is prior experience only."
             if not session.runtime_available
             else "Evidence-ranked candidate."
         ),
@@ -263,12 +351,29 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
     )
     if session.fix:
         session.state = SessionState.FIX_GENERATED
-        # Optional static validation hint: if syntax was the issue and we have parser evidence, stay suggested
         session.fix = validate_fix_static(session.fix)
         session.state = SessionState.FIX_VALIDATED
         session.state = SessionState.PARTIALLY_RESOLVED
     else:
         session.state = SessionState.PARTIALLY_RESOLVED
+
+    # 7 Learn from session (store experience if valid)
+    if brain:
+        try:
+            exp = brain.learn_from_session(session)
+            if exp:
+                session.learning = {
+                    "stored": True,
+                    "experience_id": exp.id,
+                    "status": exp.status.value if hasattr(exp.status, "value") else str(exp.status),
+                    "success": exp.success,
+                    "usefulness": exp.usefulness,
+                }
+            else:
+                session.learning = {"stored": False, "reason": "insufficient_or_invalid_experience"}
+        except Exception as exc:  # noqa: BLE001
+            session.learning = {"stored": False, "reason": str(exc)}
+            session.limitations.append(f"Learning store skipped: {exc}")
 
     session.finished_at = time.time()
     return session
@@ -288,6 +393,9 @@ def build_llm_debug_context(session: DebugSession, max_evidence: int = 15) -> Di
         "HYPOTHESES": [h.to_dict() for h in session.hypotheses[:6]],
         "ROOT_CAUSE_CANDIDATE": session.root_cause.to_dict() if session.root_cause else None,
         "SUGGESTED_FIX": session.fix.to_dict() if session.fix else None,
+        "RELATED_MEMORIES": (session.related_memories or [])[:3],
+        "CONTRADICTIONS": session.contradictions or [],
+        "LEARNING": session.learning,
         "LIMITATIONS": session.limitations,
         "RUNTIME_AVAILABLE": session.runtime_available,
         "CONSTRAINTS": [
@@ -297,6 +405,8 @@ def build_llm_debug_context(session: DebugSession, max_evidence: int = 15) -> Di
             "Respect evidence source and confidence levels",
             "Heuristic-only findings cannot be CONFIRMED",
             "Suggested Fix is not a verified patch",
+            "Memory is prior experience only; current evidence overrides conflicting memory",
+            "Do not invent evidence or claim runtime validation",
         ],
     }
 
@@ -363,6 +473,27 @@ def format_debug_report(session: DebugSession) -> str:
     else:
         lines.append("- No fix suggested (confidence too low or insufficient evidence).")
     lines.append("")
+
+    if session.related_memories:
+        lines.append("## Related Past Experiences (prior only)")
+        for m in session.related_memories[:3]:
+            rel = m.get("relevance") or 0
+            root = m.get("root_cause") or "?"
+            succ = "success" if m.get("success") else "failed/unvalidated"
+            lines.append(f"- relevance={rel:.2f} | {succ} | root: {root[:120]}")
+        lines.append("")
+
+    if session.contradictions:
+        lines.append("## Memory / Evidence Conflicts")
+        for c in session.contradictions[:5]:
+            lines.append(f"- {c}")
+        lines.append("- _Current evidence takes priority over old memory._")
+        lines.append("")
+
+    if session.learning:
+        lines.append("## Learning")
+        lines.append(f"- {session.learning}")
+        lines.append("")
 
     lines.append("## Limitations")
     for lim in (session.limitations or ["Evidence-based analysis only."]):

@@ -180,7 +180,11 @@ class DebugSession:
     fix: Optional[SuggestedFix] = None
     limitations: List[str] = field(default_factory=list)
     runtime_available: bool = False
-    version: str = "2.03"
+    # Phase 3 – Learning Brain
+    related_memories: List[Dict[str, Any]] = field(default_factory=list)
+    contradictions: List[str] = field(default_factory=list)
+    learning: Optional[Dict[str, Any]] = None
+    version: str = "3.0.0"
 
     def __post_init__(self):
         if not self.id:
@@ -203,5 +207,8 @@ class DebugSession:
             "fix": self.fix.to_dict() if self.fix else None,
             "limitations": self.limitations,
             "runtime_available": self.runtime_available,
+            "related_memories": self.related_memories,
+            "contradictions": self.contradictions,
+            "learning": self.learning,
             "version": self.version,
         }
