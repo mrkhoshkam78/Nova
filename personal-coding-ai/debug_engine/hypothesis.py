@@ -247,17 +247,39 @@ def generate_hypotheses(
 
     # ------------------------------------------------------------------ LOGIC
     if failure_type == FailureType.LOGIC:
-        hyps.append(Hypothesis(
-            id="",
-            label="Logic defect",
-            cause="Behavior diverges from expected; possible incorrect condition or data transformation.",
-            supporting_evidence_ids=all_ids[:4] if all_ids else [],
-            causal_path=["Incorrect logic or assumption", "Wrong intermediate state", "Unexpected result"],
-            severity="medium",
-            confidence=0.45 if all_ids else 0.25,
-            confidence_level=_level(0.45 if all_ids else 0.25),
-            scores={"proximity": 0.3, "evidence": 0.4, "stack": 0.2, "contradiction": 0.0},
-        ))
+        # Only weak user reports → insufficient, not a real logic diagnosis
+        strong = [e for e in evidence if e.reliability in ("confirmed", "high")
+                  or e.source in ("parser", "static", "stack_trace", "user_error", "runtime")]
+        only_weak_user = (
+            evidence
+            and not strong
+            and all(e.source in ("user", "heuristic") or e.reliability in ("possible", "weak")
+                    for e in evidence)
+        )
+        if only_weak_user or not evidence:
+            hyps.append(Hypothesis(
+                id="",
+                label="Insufficient evidence",
+                cause="Not enough structured evidence to rank a concrete root cause.",
+                supporting_evidence_ids=[],
+                causal_path=["Insufficient evidence", "Symptom observed", "Root cause not identified"],
+                severity="low",
+                confidence=0.15,
+                confidence_level=ConfidenceLevel.INSUFFICIENT_EVIDENCE,
+                scores={"proximity": 0, "evidence": 0.1, "stack": 0, "contradiction": 0},
+            ))
+        else:
+            hyps.append(Hypothesis(
+                id="",
+                label="Logic defect",
+                cause="Behavior diverges from expected; possible incorrect condition or data transformation.",
+                supporting_evidence_ids=all_ids[:4] if all_ids else [],
+                causal_path=["Incorrect logic or assumption", "Wrong intermediate state", "Unexpected result"],
+                severity="medium",
+                confidence=0.45 if strong else 0.30,
+                confidence_level=_level(0.45 if strong else 0.30),
+                scores={"proximity": 0.3, "evidence": 0.4 if strong else 0.2, "stack": 0.2, "contradiction": 0.0},
+            ))
         return _finalize(hyps, evidence)
 
     # ------------------------------------------------------------------ Generic RUNTIME (only when nothing specific matched)

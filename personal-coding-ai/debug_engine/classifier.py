@@ -39,7 +39,10 @@ def classify_failure(
     # --- Reference / NameError / ReferenceError (identifier resolution) ---
     if re.search(
         r"\bnameerror\b|\breferenceerror\b|is not defined|"
-        r"name ['\"].+['\"] is not defined|undefined variable|unresolved reference",
+        r"name ['\"].+['\"] is not defined|undefined variable|unresolved reference|"
+        r"cannot find value|not found in this scope|not found in scope|"
+        r"undeclared identifier|use of undeclared|undefined reference|"
+        r"cannot find symbol|cannot resolve symbol",
         blob,
     ):
         return FailureType.REFERENCE

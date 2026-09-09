@@ -158,7 +158,20 @@ def collect_evidence(session: DebugSession) -> DebugSession:
         session.state = SessionState.INSUFFICIENT_EVIDENCE
         session.limitations.append("No structured evidence could be collected.")
     else:
-        session.state = SessionState.EVIDENCE_COLLECTED
+        # Weak user-only reports without error/stack/code findings are not enough
+        strong_sources = {"parser", "static", "stack_trace", "user_error", "runtime", "scope"}
+        has_strong = any(
+            (e.source in strong_sources) or (e.reliability in ("confirmed", "high"))
+            for e in session.evidence
+        )
+        has_code_signal = bool(inp.error_message or inp.stack_trace or inp.source_code or inp.files)
+        if not has_strong and not has_code_signal:
+            session.state = SessionState.INSUFFICIENT_EVIDENCE
+            session.limitations.append(
+                "Only weak user description present; need error message, stack trace, or code."
+            )
+        else:
+            session.state = SessionState.EVIDENCE_COLLECTED
     return session
 
 

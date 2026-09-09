@@ -249,12 +249,14 @@ class LearningBrain:
                     f"Memory {m.get('id')} suggested nullability root cause, "
                     "but current evidence indicates non-null path."
                 )
+            # Only flag failed past fix if it looks related to current evidence
             if m.get("success") is False and m.get("fix"):
-                # failed past fix – warn not to re-apply blindly
-                conflicts.append(
-                    f"Past experience {m.get('id')} tried a similar fix and failed; "
-                    "do not re-propose without new evidence."
-                )
+                past_err = (m.get("error") or m.get("problem") or "").lower()
+                if past_err and any(tok in current_blob for tok in past_err.split() if len(tok) > 3):
+                    conflicts.append(
+                        f"Past experience {m.get('id')} tried a similar fix and failed; "
+                        "do not re-propose without new evidence."
+                    )
         return conflicts
 
     def memory_prior_boost(
