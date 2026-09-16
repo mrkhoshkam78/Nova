@@ -43,7 +43,7 @@ const Chat = window.Chat = (() => {
         }
         return c;
       });
-      const payload = { conversations: list, activeId, version: "4.0.7" };
+      const payload = { conversations: list, activeId, version: "4.0.8" };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
       // QuotaExceeded: drop oldest conversations and retry once
@@ -56,7 +56,7 @@ const Chat = window.Chat = (() => {
             content: typeof f.content === "string" ? f.content.slice(0, 8000) : "",
           })),
         }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ conversations: smaller, activeId, version: "4.0.7" }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ conversations: smaller, activeId, version: "4.0.8" }));
       } catch (_) {
         console.warn("[Nova] conversation storage full – oldest chats may not persist");
       }
@@ -428,6 +428,10 @@ const Chat = window.Chat = (() => {
     const t = text.toLowerCase().trim();
     const raw = (text || "").trim();
     const norm = raw.replace(/\u200c/g, " ").replace(/\s+/g, " ");
+
+    if (/^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|did\s+you\s+debug|is\s+it\s+fixed)[\s!.؟،]*$/i.test(raw)) {
+      return "general";
+    }
 
     // Name recall
     if (/اسم(?:م|\s*من)?\s*(چیست|چیه|چی\s*بود|چی\s*هست)|what\s*('?s| is)\s*my\s*name/i.test(norm)) {
@@ -856,7 +860,7 @@ const Chat = window.Chat = (() => {
       reply += "- اگر می‌خوای عمیق‌تر برویم، جزئیات بیشتری از همان موضوع بفرست.\n";
       reply += "- اگر موضوع عوض شده، مستقیم بگو تا روی موضوع جدید تمرکز کنم.\n";
       reply += "- اگر کد یا error داری، paste کن تا دقیق تحلیل کنم.\n\n";
-      reply += "من **Nova V4.0.7** هستم و Context + دانش فارسی برنامه‌نویسی را نگه می‌دارم.";
+      reply += "من **Nova V4.0.8** هستم و Context + دانش فارسی برنامه‌نویسی را نگه می‌دارم.";
       return reply;
     }
 
@@ -1008,6 +1012,44 @@ const Chat = window.Chat = (() => {
   }
 
   // ---------- Public actions ----------
+
+  /** True only when user is actually requesting code debugging with evidence */
+  function isDebugRequest(text, conv, intentName) {
+    if (intentName !== "debug") return false;
+    const t = (text || "").trim();
+    if (!t) return false;
+    // Meta / status questions about the assistant — never run Debugger
+    if (/^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|اوکی\s*شد|فهمیدی|متوجه\s*شدی|done\??|did\s+you\s+debug|is\s+it\s+fixed|worked\??)[\s!.؟،]*$/i.test(t)) {
+      return false;
+    }
+    // Past-tense / status about debugging without new evidence
+    if (/دیباگ\s*کردی|آیا\s*دیباگ|did\s+you\s+debug|have\s+you\s+fixed/i.test(t) && t.length < 40) {
+      return false;
+    }
+    const hasFence = /```[\s\S]{8,}```/.test(t);
+    const hasStack = /traceback|stack\s*trace|TypeError|ValueError|NullPointer|at\s+\S+:\d+/i.test(t);
+    const hasErrorToken = /\b(error|exception|bug|crash|fail)\b|خطا|باگ|استثنا|کار\s*نمی\s*کنه/i.test(t);
+    const hasFile = !!(conv && conv.files && conv.files.length);
+    const hasPrevCode = !!(conv && conv.messages && conv.messages.some((m) => /```[\s\S]{8,}```/.test(m.content || "")));
+    // Need real evidence OR explicit request with code context
+    if (hasFence || hasStack || hasFile) return true;
+    if (hasErrorToken && (hasPrevCode || t.length > 60)) return true;
+    if (/دیباگ\s*کن|debug\s*(this|it)|fix\s*this\s*bug|این\s*باگ/i.test(t) && (hasPrevCode || hasFile)) return true;
+    return false;
+  }
+
+  function conversationalDebugReply(text, conv) {
+    const name = (extractFacts((conv && conv.messages) || []).name) || null;
+    let r = name ? name + "، " : "";
+    r += "الان روی یک باگ مشخص کار نمی‌کنم — فقط مکالمه است.\n\n";
+    r += "اگر می‌خوای **دیباگ واقعی** انجام بدم:\n";
+    r += "1. تکه **کد** را با ``` بفرست\n";
+    r += "2. یا **متن خطا / stack trace** را paste کن\n";
+    r += "3. یا فایل را attach کن\n\n";
+    r += "بعد بگو «این رو دیباگ کن» تا موتور دیباگ روی همان شواهد اجرا شود.";
+    return r;
+  }
+
   async function sendMessage(text) {
     text = (text || "").trim();
     const pendingFile = window.Upload ? Upload.getPending() : null;
@@ -1046,6 +1088,12 @@ const Chat = window.Chat = (() => {
 
     // Prefer dataset fine-label when confidence is solid
     let fineIntent = intentInfo.fine || null;
+    if (/^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|اوکی\s*شد|فهمیدی|did\s+you\s+debug|is\s+it\s+fixed)[\s!.؟،]*$/i.test(text.trim())) {
+      intentInfo.intent = "general";
+      intentInfo.confidence = 0.95;
+      fineIntent = null;
+    }
+
     if (window.Knowledge && Knowledge.isReady()) {
       const prevFine = (conv.messages || [])
         .filter((m) => m.role === "user" && m.meta && m.meta.fine)
@@ -1121,17 +1169,22 @@ const Chat = window.Chat = (() => {
             ? Intent.detect(text, { messages: tc.messages, files: tc.files || [] })
             : { intent: "general" });
 
-        if (intentNow.intent === "debug" && window.Debugger) {
+        // Conversational "دیباگ کردی؟" etc. — do NOT run debug engine
+        if (intentNow.intent === "debug" && !isDebugRequest(text, tc, "debug")) {
+          reply = conversationalDebugReply(text, tc);
+        } else if (intentNow.intent === "debug" && window.Debugger && isDebugRequest(text, tc, intentNow.intent)) {
           const lastFile = (tc.files && tc.files.length) ? tc.files[tc.files.length - 1] : null;
           const codeFromMsg = (text.match(/```[\w]*\n([\s\S]*?)```/) || [])[1] || null;
           const stackMatch = text.match(/((?:Traceback[\s\S]+)|(?:\s+at\s+.+:\d+[\s\S]*))/);
           const langFromFile = lastFile && lastFile.language ? lastFile.language : null;
           const langFromFence = (text.match(/```(\w+)/) || [])[1] || null;
+          // Never treat pure chat text as errorMessage when no real error token
+          const looksLikeError = /traceback|error:|exception|TypeError|ValueError|خطا:|Error/i.test(text);
           const dbgInput = {
             sourceCode: codeFromMsg || (lastFile && lastFile.content) || null,
             language: langFromFence || langFromFile || null,
             files: tc.files || [],
-            errorMessage: text,
+            errorMessage: looksLikeError ? text : (stackMatch ? stackMatch[0] : null),
             stackTrace: stackMatch ? stackMatch[0] : null,
             userDescription: text,
             expectedBehavior: null,
@@ -1177,17 +1230,22 @@ const Chat = window.Chat = (() => {
             ? Intent.detect(text, { messages: tc.messages, files: tc.files || [] })
             : { intent: "general" });
 
-        if (intentNow.intent === "debug" && window.Debugger) {
+        // Conversational "دیباگ کردی؟" etc. — do NOT run debug engine
+        if (intentNow.intent === "debug" && !isDebugRequest(text, tc, "debug")) {
+          reply = conversationalDebugReply(text, tc);
+        } else if (intentNow.intent === "debug" && window.Debugger && isDebugRequest(text, tc, intentNow.intent)) {
           const lastFile = (tc.files && tc.files.length) ? tc.files[tc.files.length - 1] : null;
           const codeFromMsg = (text.match(/```[\w]*\n([\s\S]*?)```/) || [])[1] || null;
           const stackMatch = text.match(/((?:Traceback[\s\S]+)|(?:\s+at\s+.+:\d+[\s\S]*))/);
           const langFromFile = lastFile && lastFile.language ? lastFile.language : null;
           const langFromFence = (text.match(/```(\w+)/) || [])[1] || null;
+          // Never treat pure chat text as errorMessage when no real error token
+          const looksLikeError = /traceback|error:|exception|TypeError|ValueError|خطا:|Error/i.test(text);
           const dbgInput = {
             sourceCode: codeFromMsg || (lastFile && lastFile.content) || null,
             language: langFromFence || langFromFile || null,
             files: tc.files || [],
-            errorMessage: text,
+            errorMessage: looksLikeError ? text : (stackMatch ? stackMatch[0] : null),
             stackTrace: stackMatch ? stackMatch[0] : null,
             userDescription: text,
             expectedBehavior: null,

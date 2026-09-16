@@ -1,6 +1,6 @@
 /**
  * Intent Detection – Multi-signal scoring, context-aware (offline / client-side only)
- * Version 4.0.7 – Stronger Persian + English coverage, history-aware, confidence calibration
+ * Version 4.0.8 – Stronger Persian + English coverage, history-aware, confidence calibration
  */
 const Intent = window.Intent = (() => {
   // ── Code presence signals ──────────────────────────────────────────────
@@ -59,6 +59,11 @@ const Intent = window.Intent = (() => {
   function detect(text, context) {
     const t = (text || "").trim();
     if (!t) return { intent: "empty", confidence: 1, reason: "empty input" };
+
+    // Meta status questions (not a debug request)
+    if (/^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|اوکی\s*شد|فهمیدی|متوجه\s*شدی|did\s+you\s+debug|is\s+it\s+fixed|worked)[\s!.؟،]*$/i.test(t)) {
+      return { intent: "general", confidence: 0.92, reason: "meta-status-question", fine: null };
+    }
 
     const msgs = (context && context.messages) || [];
     const files = (context && context.files) || [];

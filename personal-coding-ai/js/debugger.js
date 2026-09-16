@@ -139,8 +139,19 @@ const Debugger = window.Debugger = (() => {
       hasErrorMessage: !!inp.errorMessage,
     };
 
-    if (!session.classification.hasCode && !session.classification.hasErrorMessage && !inp.userDescription) {
+    // Short conversational text alone is NOT enough to debug
+    const desc = (inp.userDescription || "").trim();
+    const descIsChatOnly = desc.length > 0 && desc.length < 80 &&
+      !/error|exception|traceback|TypeError|bug:|خطا|stack/i.test(desc) &&
+      !session.classification.hasCode && !session.classification.hasStackTrace;
+    if (!session.classification.hasCode && !session.classification.hasErrorMessage && !desc) {
       transition(session, STATES.INSUFFICIENT_EVIDENCE);
+      session.limitations.push("No code, error message, or description provided");
+      return session;
+    }
+    if (descIsChatOnly) {
+      transition(session, STATES.INSUFFICIENT_EVIDENCE);
+      session.limitations.push("User message looks like conversation, not a bug report with evidence");
       return session;
     }
     transition(session, STATES.CLASSIFIED);

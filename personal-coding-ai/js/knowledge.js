@@ -1,12 +1,12 @@
 /**
- * knowledge.js – Nova V4.0.7 Local Knowledge Layer (offline, algorithm level ~12/20)
+ * knowledge.js – Nova V4.0.8 Local Knowledge Layer (offline, algorithm level ~12/20)
  *
  * Pipeline: normalize → signals → score → map → continuity
  * Uses NOVA_FA_DB.json only as a local dataset (never dumps full DB into prompts).
  */
 const Knowledge = window.Knowledge = (() => {
   const DATASET_URL = "data/NOVA_FA_DB.json";
-  const VERSION = "4.0.7";
+  const VERSION = "4.0.8";
 
   const FINE_TO_COARSE = {
     debug: "debug",
@@ -31,7 +31,7 @@ const Knowledge = window.Knowledge = (() => {
   /** Layer: action / verb priors */
   const ACTION_PRIORS = [
     { re: /درست\s*کن|رفع\s*کن|فیکس|برطرف\s*کن|اصلاح\s*کن|fix\s*it|\bfix\b|solve|repair/i, fine: "fix", w: 0.38 },
-    { re: /دیباگ|باگ\s*پیدا|علت\s*(چیست|چییه)|چرا\s*کار\s*نمی|root\s*cause|\bdebug\b/i, fine: "debug", w: 0.36 },
+    { re: /باگ\s*پیدا|دیباگش\s*کن|دیباگ\s*کن|علت\s*(چیست|چییه)|چرا\s*کار\s*نمی|root\s*cause|please\s*debug|debug\s*(this|it|the)/i, fine: "debug", w: 0.36 },
     { re: /stack\s*trace|این\s*خطا\s*یعنی|معنی\s*error|explain\s*error|چرا\s*این\s*exception/i, fine: "explain_error", w: 0.34 },
     { re: /منطق\s*کد|چطور\s*کار\s*می|چه\s*کار\s*می\s*کنه|explain\s*code|how\s*does\s*(this|it)/i, fine: "explain_code", w: 0.32 },
     { re: /رفاکتور|بازنویسی|تمیز\s*کن|خواناتر|refactor|clean\s*up/i, fine: "refactor", w: 0.36 },
@@ -166,7 +166,7 @@ const Knowledge = window.Knowledge = (() => {
     };
     for (const t of terms) {
       const blob = ((t.en || "") + " " + (t.fa || "")).toLowerCase();
-      if (/bug|error|debug|exception|traceback|باگ|خطا|دیباگ|استثنا/.test(blob)) {
+      if (/bug|error|exception|traceback|باگ|خطا|استثنا/.test(blob)) {
         add("debug", 0.11);
         add("fix", 0.07);
         add("explain_error", 0.05);
@@ -198,6 +198,21 @@ const Knowledge = window.Knowledge = (() => {
     const q = tokenize(text);
     const n = normalize(text);
     const raw = text || "";
+
+    // Meta-conversation: talking ABOUT debugging, not requesting a debug session
+    const META_CHAT = /^(دیباگ\s*کردی\s*\؟?|دیباگ\s*شد\؟?|درست\s*شد\؟?|اوکی\s*شد\؟?|فهمیدی\؟?|متوجه\s*شدی\؟?|done\؟?|did\s+you\s+debug|is\s+it\s+fixed|worked\؟?)[\s!.،]*$/i;
+    if (META_CHAT.test(raw.trim()) || META_CHAT.test(n)) {
+      return {
+        fine: null,
+        coarse: "general",
+        confidence: 0.9,
+        scores: { general: 0.9 },
+        terms: extractTerms(text),
+        reason: "meta-conversation",
+        source: "guard",
+        version: VERSION,
+      };
+    }
 
     const labelScores = {};
     const bump = (lab, w, why) => {
