@@ -253,6 +253,24 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
     session.actual_behavior = inp.actual_behavior or inp.error_message or "Failure observed"
     session.runtime_available = False  # no sandbox in this version
     session.limitations.append("No code execution sandbox — results are evidence-based only.")
+
+    # Reject conversational messages mistaken for bug reports
+    desc = (inp.user_description or "").strip()
+    has_code = bool(inp.source_code) or bool(inp.files)
+    has_err = bool(inp.error_message) or bool(inp.stack_trace)
+    chat_only = (
+        not has_code
+        and not has_err
+        and len(desc) < 80
+        and not any(k in desc.lower() for k in ("error", "exception", "traceback", "typeerror", "خطا", "stack"))
+    )
+    if chat_only or (not has_code and not has_err and not desc):
+        session.state = SessionState.INSUFFICIENT_EVIDENCE
+        session.limitations.append(
+            "Insufficient evidence: need source code, stack trace, or a concrete error message — not a short chat question."
+        )
+        return session
+
     session.limitations.append("Validation is reasoning/static only (no runtime confirmation).")
 
     brain = _get_learning_brain()
