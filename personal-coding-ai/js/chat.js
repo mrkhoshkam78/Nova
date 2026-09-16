@@ -43,7 +43,7 @@ const Chat = window.Chat = (() => {
         }
         return c;
       });
-      const payload = { conversations: list, activeId, version: "4.0.1" };
+      const payload = { conversations: list, activeId, version: "4.0.7" };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
       // QuotaExceeded: drop oldest conversations and retry once
@@ -56,7 +56,7 @@ const Chat = window.Chat = (() => {
             content: typeof f.content === "string" ? f.content.slice(0, 8000) : "",
           })),
         }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ conversations: smaller, activeId, version: "4.0.1" }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ conversations: smaller, activeId, version: "4.0.7" }));
       } catch (_) {
         console.warn("[Nova] conversation storage full – oldest chats may not persist");
       }
@@ -556,7 +556,11 @@ const Chat = window.Chat = (() => {
     let fineLabel = null;
     let termHits = [];
     if (window.Knowledge && Knowledge.isReady()) {
-      const km = Knowledge.matchIntent(userText, { prevFine: ctx && ctx.lastFine });
+      const km = Knowledge.matchIntent(userText, {
+        prevFine: ctx && ctx.lastFine,
+        hasCode: !!(ctx && ctx.lastCode) || /```/.test(userText),
+        hasError: !!(ctx && ctx.lastError) || /error|exception|خطا|باگ/i.test(userText),
+      });
       if (km) {
         fineLabel = km.fine;
         termHits = km.terms || [];
@@ -852,7 +856,7 @@ const Chat = window.Chat = (() => {
       reply += "- اگر می‌خوای عمیق‌تر برویم، جزئیات بیشتری از همان موضوع بفرست.\n";
       reply += "- اگر موضوع عوض شده، مستقیم بگو تا روی موضوع جدید تمرکز کنم.\n";
       reply += "- اگر کد یا error داری، paste کن تا دقیق تحلیل کنم.\n\n";
-      reply += "من **Nova V4.0.1** هستم و Context + دانش فارسی برنامه‌نویسی را نگه می‌دارم.";
+      reply += "من **Nova V4.0.7** هستم و Context + دانش فارسی برنامه‌نویسی را نگه می‌دارم.";
       return reply;
     }
 
@@ -897,6 +901,8 @@ const Chat = window.Chat = (() => {
     if (window.Knowledge && Knowledge.isReady()) {
       const built = Knowledge.buildHint(lastText, {
         prevFine: (prevFine && prevFine.meta && prevFine.meta.fine) || fineIntent,
+        hasCode: !!(conv.files && conv.files.length) || /```/.test(lastText),
+        hasError: /error|exception|traceback|خطا|باگ/i.test(lastText),
       });
       if (built && built.match) {
         if (built.match.fine) fineIntent = built.match.fine;
@@ -1046,6 +1052,8 @@ const Chat = window.Chat = (() => {
         .slice(-1)[0];
       const km = Knowledge.matchIntent(text, {
         prevFine: prevFine && prevFine.meta ? prevFine.meta.fine : null,
+        hasCode: !!(conv.files && conv.files.length) || /```/.test(text),
+        hasError: /error|exception|traceback|خطا|باگ/i.test(text),
       });
       if (km && km.fine && km.confidence >= 0.48) {
         fineIntent = km.fine;

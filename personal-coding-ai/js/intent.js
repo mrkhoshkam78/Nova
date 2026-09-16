@@ -1,6 +1,6 @@
 /**
  * Intent Detection – Multi-signal scoring, context-aware (offline / client-side only)
- * Version 4.0.1 – Stronger Persian + English coverage, history-aware, confidence calibration
+ * Version 4.0.7 – Stronger Persian + English coverage, history-aware, confidence calibration
  */
 const Intent = window.Intent = (() => {
   // ── Code presence signals ──────────────────────────────────────────────
@@ -232,7 +232,13 @@ const Intent = window.Intent = (() => {
             break;
           }
         }
-        knowledgeMeta = Knowledge.matchIntent(t, { prevFine: prevFineLabel });
+        const hasCodeCtx = hasCodeNow || hasCodeHist || hasFile;
+        const hasErrCtx = BUG_STRONG.test(t) || BUG_MEDIUM.test(t);
+        knowledgeMeta = Knowledge.matchIntent(t, {
+          prevFine: prevFineLabel,
+          hasCode: hasCodeCtx,
+          hasError: hasErrCtx,
+        });
         if (knowledgeMeta && knowledgeMeta.coarse && knowledgeMeta.confidence >= 0.45) {
           const coarse = knowledgeMeta.coarse;
           const conf = knowledgeMeta.confidence;
