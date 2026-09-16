@@ -281,23 +281,26 @@ const Chat = window.Chat = (() => {
   // ---------- Context-aware Mock AI ----------
   function extractFacts(messages) {
     const facts = { name: null };
+    // Normalize ZWNJ (\u200c) and extra spaces for matching
+    const norm = (s) => (s || "").replace(/\u200c/g, "").replace(/\s+/g, " ").trim();
+
     messages.forEach((m) => {
       if (m.role !== "user") return;
-      const c = (m.content || "").trim();
-      // Skip pure questions: "اسم من چیست؟" / "اسمم چیه؟"
-      if (/اسم(?:م|\s*من)?\s*(چیست|چیه|چی\s*بود|چی\s*هست)|what.?s\s+my\s+name|what\s+is\s+my\s+name/i.test(c) &&
-          !/اسم(?:م|\s*من)\s+[\u0600-\u06FFa-zA-Z]{2,}/.test(c)) {
+      const c = norm(m.content || "");
+      // Skip pure name-questions without a stated name
+      if (/اسم(?:م| من)?\s*(چیست|چیه|چی بود|چی هست)|what.?s my name|what is my name/i.test(c) &&
+          !/اسم(?:م| من)\s+[\u0600-\u06FFa-zA-Z]{2,}/.test(c)) {
         return;
       }
       let name = null;
 
-      // 1) "اسم من علیرضا است" | "اسمم علیرضا است" | "اسم من علیرضا"
-      let mFa = c.match(/اسم(?:م|\s*من)\s+([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s]{0,30}?)(?:\s+(?:است|هست|هستم|می‌باشد|می‌باشم))?(?:[\s،.؟!]|$)/);
+      // 1) اسم من X است / اسمم X / اسم من X
+      let mFa = c.match(/اسم(?:م| من)\s+([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s\u200c]{0,35}?)(?:\s+(?:است|هست|هستم|میباشد|میباشم|می‌باشد|می‌باشم))?(?:[\s،.؟!]|$)/);
       if (mFa) name = mFa[1].trim();
 
-      // 2) "من علیرضا هستم" | "من علی رضایی هستم"
+      // 2) من X هستم
       if (!name) {
-        let mSelf = c.match(/من\s+([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s]{1,28}?)\s+(?:هستم|هست|است)/);
+        let mSelf = c.match(/من\s+([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s\u200c]{1,30}?)\s+(?:هستم|هست|است)/);
         if (mSelf) name = mSelf[1].trim();
       }
 
@@ -307,24 +310,28 @@ const Chat = window.Chat = (() => {
         if (mEn) name = mEn[1].trim();
       }
 
-      // 4) "اسمم = علیرضا" or "اسم من: علی"
+      // 4) اسمم = X  |  اسم من: X
       if (!name) {
-        let mEq = c.match(/اسم(?:م|\s*من)\s*[=:]\s*([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s]{0,25})/);
+        let mEq = c.match(/اسم(?:م| من)\s*[=:]\s*([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s\u200c]{0,25})/);
         if (mEq) name = mEq[1].trim();
       }
 
+      // 5) «من X ام» colloquial
+      if (!name) {
+        let mAm = c.match(/من\s+([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s]{1,20}?)\s*ام(?:[\s.،]|$)/);
+        if (mAm) name = mAm[1].trim();
+      }
+
       if (name) {
-        name = name.replace(/[؟!.,؛:]+$/g, "").trim();
-        // Remove glued Persian copulas: رضاست → رضا ، علیرضاست → علیرضا
+        name = name.replace(/[؟!.,؛:]+$/g, "").replace(/\u200c/g, "").trim();
         if (/[اوی]ست$/.test(name) && name.length >= 4) name = name.slice(0, -2);
         else if (/است$/.test(name) && name.length >= 5) name = name.slice(0, -3);
         else if (/هستم$/.test(name) && name.length >= 6) name = name.slice(0, -4);
         else if (/هست$/.test(name) && name.length >= 5) name = name.slice(0, -3);
-        // Collapse extra spaces in multi-word names
         name = name.replace(/\s+/g, " ").trim();
       }
 
-      if (name && name.length >= 2 && !/^(من|چیست|چیه|is|what|اسم|نام)$/i.test(name)) {
+      if (name && name.length >= 2 && !/^(من|چیست|چیه|is|what|اسم|نام|هستم)$/i.test(name)) {
         facts.name = name;
       }
     });
@@ -336,69 +343,140 @@ const Chat = window.Chat = (() => {
     if (prior.length === 0) return null;
 
     const topics = [];
+    let lastCode = null;
+    let lastError = null;
+    let lastCodeLang = null;
+
     prior.forEach((m) => {
-      const t = (m.content || "").toLowerCase();
-      if (t.includes("python") || t.includes("پایتون")) topics.push("Python");
-      if (t.includes("javascript") || t.includes("js ") || t.includes("node")) topics.push("JavaScript");
-      if (t.includes("react")) topics.push("React");
-      if (t.includes("django")) topics.push("Django");
-      if (t.includes("fastapi") || t.includes("fast api")) topics.push("FastAPI");
-      if (t.includes("bug") || t.includes("error") || t.includes("خطا") || t.includes("اشکال") || t.includes("باگ")) topics.push("debugging");
-      if (t.includes("refactor") || t.includes("تمیز") || t.includes("بهبود")) topics.push("refactoring");
-      if (t.includes("decorator")) topics.push("decorators");
-      if (t.includes("null") || t.includes("none")) topics.push("null-safety");
-      if (/\basync\b|\bawait\b|\bpromise\b/.test(t)) topics.push("async");
-      if (t.includes("api") || t.includes("endpoint") || t.includes("pydantic")) topics.push("API design");
-      if (t.includes("test") || t.includes("تست")) topics.push("testing");
-      if (/```|def |function |class |const |let |var /.test(t)) topics.push("code-review");
+      const raw = m.content || "";
+      const t = raw.toLowerCase();
+      // Persian + English topic signals
+      if (t.includes("python") || t.includes("پایتون") || t.includes("پایتن")) topics.push("Python");
+      if (t.includes("javascript") || t.includes("جاوااسکریپت") || t.includes("جاوا اسکریپت") || /\bjs\b|\bnode\b/.test(t)) topics.push("JavaScript");
+      if (t.includes("typescript") || t.includes("تایپ‌اسکریپت") || t.includes("تایپ اسکریپت")) topics.push("TypeScript");
+      if (t.includes("react") || t.includes("ری‌اکت") || t.includes("ری اکت")) topics.push("React");
+      if (t.includes("vue") || t.includes("ویو")) topics.push("Vue");
+      if (t.includes("django") || t.includes("جنگو")) topics.push("Django");
+      if (t.includes("fastapi") || t.includes("fast api") || t.includes("فست‌ای‌پی‌آی")) topics.push("FastAPI");
+      if (/bug|error|exception|traceback|خطا|اشکال|باگ|کار\s*نمی/.test(t)) topics.push("debugging");
+      if (/refactor|تمیز|بهبود|بهینه|بازنویسی/.test(t)) topics.push("refactoring");
+      if (t.includes("decorator") || t.includes("دکوریتور")) topics.push("decorators");
+      if (/null|none|undefined|نال/.test(t)) topics.push("null-safety");
+      if (/\basync\b|\bawait\b|\bpromise\b|آسنک|پرامیس/.test(t)) topics.push("async");
+      if (/\bapi\b|endpoint|pydantic|اندپوینت/.test(t)) topics.push("API design");
+      if (/test|تست|یونیت/.test(t)) topics.push("testing");
+      if (/```|def |function |class |const |let |var /.test(raw)) topics.push("code-review");
+
+      // Extract last fenced code block
+      const codeMatch = raw.match(/```([\w]*)\n([\s\S]*?)```/);
+      if (codeMatch && codeMatch[2] && codeMatch[2].trim().length > 8) {
+        lastCode = codeMatch[2].trim();
+        lastCodeLang = codeMatch[1] || "";
+      }
+      // Extract error / traceback snippets
+      if (/traceback|exception|error|TypeError|ValueError|خطا|استثنا/i.test(raw)) {
+        const errLine = raw.split("\n").find((l) => /error|exception|traceback|TypeError|ValueError|خطا/i.test(l));
+        if (errLine) lastError = errLine.trim().slice(0, 200);
+      }
     });
+
+    // Also check files attached in conversation for code
+    // (files live on conv, not messages — handled by caller if needed)
 
     const unique = [...new Set(topics)];
     const facts = extractFacts(prior);
+    const lastUserMsg = prior.filter((m) => m.role === "user").slice(-1)[0];
+    const lastAsstMsg = prior.filter((m) => m.role === "assistant").slice(-1)[0];
     return {
       messageCount: prior.length,
       topics: unique,
       facts,
-      lastUser: prior.filter((m) => m.role === "user").slice(-1)[0]?.content || "",
-      lastAssistant: prior.filter((m) => m.role === "assistant").slice(-1)[0]?.content || "",
+      lastUser: (lastUserMsg && lastUserMsg.content) || "",
+      lastAssistant: (lastAsstMsg && lastAsstMsg.content) || "",
+      lastIntent: (lastUserMsg && lastUserMsg.meta && lastUserMsg.meta.intent) || null,
+      lastCode,
+      lastCodeLang,
+      lastError,
     };
   }
 
   function detectIntent(text) {
     const t = text.toLowerCase().trim();
     const raw = (text || "").trim();
+    const norm = raw.replace(/\u200c/g, " ").replace(/\s+/g, " ");
 
-    // Name recall – stronger Persian forms
-    if (/اسم(?:م|\s*من)?\s*(چیست|چیه|چی\s*بود|چی\s*هست)|what\s*('?s| is)\s*my\s*name/i.test(raw)) {
+    // Name recall
+    if (/اسم(?:م|\s*من)?\s*(چیست|چیه|چی\s*بود|چی\s*هست)|what\s*('?s| is)\s*my\s*name/i.test(norm)) {
       return "ask-name";
     }
-    // Self intro of user – covers: اسم من X است / اسمم X / من X هستم / my name is
-    if (/اسم(?:م|\s*من)\s+[\u0600-\u06FFa-zA-Z].{0,40}(است|هست|هستم|می‌باشد)?|من\s+[\u0600-\u06FFa-zA-Z].{1,30}\s+هستم|my\s+name\s+is/i.test(raw)) {
+    // User states name
+    if (/اسم(?:م|\s*من)\s+[\u0600-\u06FFa-zA-Z].{0,40}(است|هست|هستم|می‌باشد)?|من\s+[\u0600-\u06FFa-zA-Z].{1,30}\s+هستم|my\s+name\s+is/i.test(norm)) {
       return "tell-name";
     }
-    // Explicit topic switch
-    if (/نه\s*صبر|صبر\s*کن|بگذریم|موضوع\s*رو\s*عوض|موضوع\s*را\s*عوض|در\s*مورد\s+.+\s*بگو|about\s+\w+\s+instead|switch\s+to/i.test(raw)) {
+    // Topic switch
+    if (/نه\s*صبر|صبر\s*کن|بگذریم|موضوع\s*رو\s*عوض|موضوع\s*را\s*عوض|در\s*مورد\s+.+\s*بگو|about\s+\w+\s+instead|switch\s+to/i.test(norm)) {
       return "topic-switch";
     }
-    // Self-introduction request for AI
-    if (/خودت\s*را\s*معرفی|introduce\s+yourself|کی\s*هستی|who\s+are\s+you|چیستی|تو\s*کی\s*هستی/i.test(raw)) {
+    // AI intro
+    if (/خودت\s*را\s*معرفی|introduce\s+yourself|کی\s*هستی|who\s+are\s+you|چیستی|تو\s*کی\s*هستی/i.test(norm)) {
       return "intro";
     }
-    if (/```|def |function |class |const |let |var |import /.test(raw) || /این\s*کد|this\s+code|همین\s*کد/i.test(raw)) {
+
+    // Short Persian follow-ups that inherit previous intent (handled later with context)
+    // Detect action words that imply continuity
+    const isShortFollow =
+      /^(بیشتر|ادامه|ادامه\s*بده|بیشتر\s*بگو|مثال|مثال\s*بزن|کدش|کدشو|درستش\s*کن|درست\s*کن|رفعش\s*کن|توضیح\s*بده|باز\s*کن|نشان\s*بده|بده|کن)[\s!.،]*$/i.test(norm) ||
+      /^(more|continue|fix\s*it|explain\s*more|show\s*(me|code)|give\s*(me|code))[\s!.]*$/i.test(norm);
+
+    if (isShortFollow) return "follow-up";
+
+    // Anaphora + code reference → prefer review/debug based on verbs
+    const hasAnaphora = /\b(این|همین|اون|آن|قبلی|کدش|کدشو|خطاش|مشکلش|this|that|it|previous)\b/i.test(norm);
+    const wantsFix = /درست\s*کن|رفع\s*کن|فیکس|fix|solve|repair/i.test(norm);
+    const wantsReview = /بررسی|تحلیل|ببین|نگاه|review|check|look/i.test(norm);
+
+    if (/```|def |function |class |const |let |var |import /.test(raw)) {
+      if (wantsFix || /باگ|خطا|error|bug/i.test(norm)) return "debug";
       return "code-review";
     }
-    if (/\b(bug|error|exception|traceback|crash)\b|خطا|اشکال|باگ|کار\s*نمی\s*کنه|کار\s*نمیکنه|درست\s*کار\s*نمیکنه/i.test(raw)) {
+    if (hasAnaphora && wantsFix) return "debug";
+    if (hasAnaphora && wantsReview) return "code-review";
+    if (/این\s*کد|همین\s*کد|this\s+code|همین\s*رو|اینو\s*ببین/i.test(norm)) {
+      return wantsFix ? "debug" : "code-review";
+    }
+
+    if (/\b(bug|error|exception|traceback|crash)\b|خطا|اشکال|باگ|کار\s*نمی\s*کنه|کار\s*نمیکنه|درست\s*کار\s*نمیکنه/i.test(norm)) {
       return "debug";
     }
-    if (/refactor|تمیز|بهتر\s*بنویس|improve|clean\s*up|بهینه/i.test(raw)) {
+    if (/refactor|تمیز|بهتر\s*بنویس|improve|clean\s*up|بهینه|بازنویسی/i.test(norm)) {
       return "refactor";
     }
-    if (/decorator|دکوریتور/i.test(raw)) return "decorator";
-    if (/یاد|learn|شروع|example|مثال|چطور|how\s+(to|does)|چیست|چیه|توضیح/i.test(raw)) {
+    if (/decorator|دکوریتور/i.test(norm)) return "decorator";
+    if (/یاد|learn|شروع|example|مثال|چطور|how\s+(to|does)|چیست|چیه|توضیح/i.test(norm)) {
       return "explain";
     }
-    if (/^(سلام|درود|hi|hello|hey)[\s!.،,]*$/i.test(raw) || t === "hi" || t === "hello") return "greeting";
+    if (/^(سلام|درود|hi|hello|hey)[\s!.،,]*$/i.test(norm) || t === "hi" || t === "hello") return "greeting";
     return "general";
+  }
+
+  /** Resolve Persian/English pronouns to previous code or error from context */
+  function resolveAnaphora(userText, ctx) {
+    if (!ctx) return { kind: null, snippet: null, lang: null };
+    const t = (userText || "").replace(/\u200c/g, " ");
+    const pointsToCode = /این\s*کد|همین\s*کد|کدش|کدشو|همین\s*رو|اینو|this\s+code|the\s+code|previous\s+code|کد\s*قبلی/i.test(t);
+    const pointsToError = /این\s*خطا|همین\s*خطا|خطاش|اون\s*ارور|this\s+error|the\s+error|stack/i.test(t);
+    const pointsToPrev = /قبلی|همین|این|اون|آن|it|that|this/i.test(t);
+
+    if ((pointsToCode || pointsToPrev) && ctx.lastCode) {
+      return { kind: "code", snippet: ctx.lastCode, lang: ctx.lastCodeLang || "" };
+    }
+    if ((pointsToError || pointsToPrev) && ctx.lastError) {
+      return { kind: "error", snippet: ctx.lastError, lang: null };
+    }
+    if (ctx.lastCode && /کد|code|باگ|خطا|بررسی|درست/i.test(t)) {
+      return { kind: "code", snippet: ctx.lastCode, lang: ctx.lastCodeLang || "" };
+    }
+    return { kind: null, snippet: null, lang: null };
   }
 
   function detectNewTopic(text) {
@@ -427,7 +505,7 @@ const Chat = window.Chat = (() => {
     if (window.Intent) {
       const smart = Intent.detect(userText, { messages: history, files: (getActive() && getActive().files) || [] });
       if (smart && smart.intent) {
-        const protectedIntents = ["tell-name", "ask-name", "topic-switch", "intro"];
+        const protectedIntents = ["tell-name", "ask-name", "topic-switch", "intro", "follow-up"];
         if (!protectedIntents.includes(localIntent)) {
           intent = smart.intent;
         }
@@ -449,6 +527,51 @@ const Chat = window.Chat = (() => {
     const facts = (ctx && ctx.facts) || extractFacts(history.slice(0, -1));
     // Also extract from full history including current if user just stated name
     const allFacts = extractFacts(history);
+
+    // --- Offline knowledge layer (terminology + fine intent) ---
+    let fineLabel = null;
+    let termHits = [];
+    if (window.Knowledge && Knowledge.isReady()) {
+      const km = Knowledge.matchIntent(userText);
+      if (km) {
+        fineLabel = km.fine;
+        termHits = km.terms || [];
+        // Align coarse intent with dataset when stronger
+        if (km.coarse && km.confidence >= 0.55) {
+          const protectedLocal = ["tell-name", "ask-name", "topic-switch", "intro", "greeting"];
+          if (!protectedLocal.includes(intent)) {
+            intent = km.coarse;
+          }
+        }
+      }
+    }
+
+    // --- Anaphora + short follow-up inheritance (Persian-aware) ---
+    const ref = resolveAnaphora(userText, ctx);
+    if (intent === "follow-up" && ctx && ctx.lastIntent) {
+      // Inherit previous intent for short replies: «ادامه بده»، «درستش کن»، «مثال بزن»
+      const inheritMap = {
+        debug: "debug",
+        "code-review": "code-review",
+        refactor: "refactor",
+        explain: "explain",
+        "code-generation": "code-generation",
+        decorator: "decorator",
+      };
+      if (inheritMap[ctx.lastIntent]) {
+        intent = inheritMap[ctx.lastIntent];
+      } else if (/درست|رفع|فیکس|fix/i.test(userText)) {
+        intent = "debug";
+      } else if (/مثال|کد|code|بده/i.test(userText)) {
+        intent = ctx.lastIntent === "explain" ? "explain" : "code-generation";
+      } else {
+        intent = "explain";
+      }
+    }
+    // If user points to previous code without pasting it again
+    if (ref.kind === "code" && (intent === "general" || intent === "follow-up")) {
+      intent = /درست|رفع|باگ|خطا|fix|error/i.test(userText) ? "debug" : "code-review";
+    }
 
     // --- AI intro ---
     if (intent === "intro" || (intent === "greeting" && /معرفی|introduce|who are you|کی هستی/i.test(userText))) {
@@ -500,10 +623,95 @@ const Chat = window.Chat = (() => {
       return "باشه، موضوع قبلی را کنار می‌گذاریم. موضوع جدید دقیقاً چیست؟";
     }
 
+    // --- Fine-grained domain replies (from knowledge dataset labels) ---
+    if (fineLabel === "security" || (fineLabel === "review" && /امنیت|security|xss|csrf|injection|sql/i.test(userText))) {
+      let reply = "تحلیل **امنیتی** (بر اساس شواهد کد و اصطلاحات تشخیص‌داده‌شده):\n\n";
+      if (termHits.length) reply += Knowledge.describeTerms(termHits) + "\n\n";
+      reply += "1. ورودی‌ها validate / sanitize شده‌اند؟\n";
+      reply += "2. secret یا token در frontend لو نرفته؟\n";
+      reply += "3. خطر XSS / SQL injection / CSRF را چک کن.\n";
+      reply += "4. authorization روی endpointها اجباری است؟\n\n";
+      reply += "اگر تکه کد حساس را paste کنی، نقاط آسیب‌پذیر را دقیق‌تر می‌گویم.";
+      return reply;
+    }
+    if (fineLabel === "performance") {
+      let reply = "تحلیل **کارایی / performance**:\n\n";
+      if (termHits.length) reply += Knowledge.describeTerms(termHits) + "\n\n";
+      reply += "- bottleneck احتمالی (loop، query، render مکرر)\n";
+      reply += "- مصرف حافظه و احتمال memory leak\n";
+      reply += "- async بدون کنترل (waterfall درخواست‌ها)\n";
+      reply += "- نیاز به caching یا pagination\n\n";
+      reply += "کد یا پروفایل را بفرست تا نقطه داغ را مشخص کنم.";
+      return reply;
+    }
+    if (fineLabel === "fix") {
+      let reply = "حالت **اصلاح (fix)** — تغییر کم‌ریسک:\n\n";
+      if (ref.kind === "code" && ref.snippet) {
+        reply += "کد قبلی را مبنا قرار دادم.\n\n";
+      }
+      reply += "1. علت محتمل را از روی شواهد جدا کن\n";
+      reply += "2. یک patch کوچک و قابل‌تست پیشنهاد بده\n";
+      reply += "3. edge-case (null / empty / race) را پوشش بده\n\n";
+      reply += "```python\n# الگوی دفاعی\nif data is None:\n    raise ValueError(\"missing data\")\n```\n\n";
+      reply += "اگر stack trace داری بفرست تا fix دقیق‌تری بدهم.";
+      return reply;
+    }
+    if (fineLabel === "explain_error") {
+      let reply = "توضیح **خطا**:\n\n";
+      if (ctx && ctx.lastError) reply += `آخرین نشانه خطا: «${ctx.lastError}»\n\n`;
+      if (termHits.length) reply += Knowledge.describeTerms(termHits) + "\n\n";
+      reply += "1. این پیام یعنی چه (به زبان ساده)\n";
+      reply += "2. معمولاً از کجا می‌آید\n";
+      reply += "3. چطور Reproduce و رفعش کنی\n\n";
+      reply += "متن کامل error یا stack trace را بفرست.";
+      return reply;
+    }
+    if (fineLabel === "explain_code") {
+      let reply = "توضیح **منطق کد** مرحله‌به‌مرحله:\n\n";
+      if (ref.kind === "code" && ref.snippet) {
+        const preview = ref.snippet.slice(0, 220) + (ref.snippet.length > 220 ? "\n…" : "");
+        reply += "```" + (ref.lang || "") + "\n" + preview + "\n```\n\n";
+      }
+      reply += "1. ورودی‌ها چیستند\n2. جریان اجرا\n3. خروجی / side-effect\n4. فرض‌های پنهان\n\n";
+      reply += "اگر بخش خاصی مبهم است بگو تا همان را باز کنم.";
+      return reply;
+    }
+    if (fineLabel === "refactor") {
+      intent = "refactor";
+    }
+    if (fineLabel === "test") {
+      let reply = "پیشنهاد **تست**:\n\n";
+      reply += "- unit test برای منطق خالص\n";
+      reply += "- edge case: null، لیست خالی، مقدار مرزی\n";
+      reply += "- در صورت API: integration test مسیر اصلی\n";
+      reply += "- regression برای باگ رفع‌شده\n\n";
+      reply += "تابع یا ماژول را بفرست تا test caseهای مشخص بنویسم.";
+      return reply;
+    }
+    if (fineLabel && ["api", "database", "ui", "git", "config", "network", "architecture"].includes(fineLabel)) {
+      const titles = {
+        api: "API / ارتباط client-server",
+        database: "دیتابیس / query",
+        ui: "UI / DOM / CSS",
+        git: "Git / diff / merge",
+        config: "config / build / dependency",
+        network: "network / timeout / retry",
+        architecture: "معماری / وابستگی ماژول‌ها",
+      };
+      let reply = `بازبینی متمرکز روی **${titles[fineLabel] || fineLabel}**:\n\n`;
+      if (termHits.length) reply += Knowledge.describeTerms(termHits) + "\n\n";
+      reply += "نکات را فقط بر اساس شواهد کد می‌گویم. تکه مرتبط را paste کن تا دقیق‌تر شویم.\n";
+      return reply;
+    }
+
     // --- Code review ---
     if (intent === "code-review") {
       let reply = "کدت رو بررسی کردم.\n\n";
-      if (hasContext && topicHint) {
+      if (ref.kind === "code" && ref.snippet) {
+        reply += "به **کد قبلی** که فرستاده بودی ارجاع دادی؛ همان را مبنا قرار دادم.\n\n";
+        const preview = ref.snippet.slice(0, 280) + (ref.snippet.length > 280 ? "\n…" : "");
+        reply += "```" + (ref.lang || "") + "\n" + preview + "\n```\n\n";
+      } else if (hasContext && topicHint) {
         reply += `با توجه به صحبت قبلی‌مون درباره **${topicHint}**، چند نکته:\n\n`;
       } else {
         reply += "چند نکته مهم:\n\n";
@@ -519,12 +727,21 @@ const Chat = window.Chat = (() => {
     // --- Debug ---
     if (intent === "debug") {
       let reply = "";
-      if (hasContext) {
+      if (ref.kind === "code" && ref.snippet) {
+        reply += "به **کد / خطای قبلی** ارجاع دادی؛ همان context را برای دیباگ استفاده کردم.\n\n";
+        const preview = ref.snippet.slice(0, 240) + (ref.snippet.length > 240 ? "\n…" : "");
+        reply += "```" + (ref.lang || "") + "\n" + preview + "\n```\n\n";
+      } else if (ref.kind === "error" && ref.snippet) {
+        reply += `خطای قبلی که دیدی: «${ref.snippet}»\n\n`;
+      } else if (hasContext) {
         reply += "با توجه به پیام‌های قبلی این Conversation";
         if (topicHint) reply += ` (موضوع: **${topicHint}**)`;
         reply += "، احتمالاً مشکل از اینجا است:\n\n";
       } else {
         reply += "برای پیدا کردن باگ، این موارد را چک کن:\n\n";
+      }
+      if (ctx && ctx.lastError && ref.kind !== "error") {
+        reply += `آخرین نشانه‌ی خطا در مکالمه: «${ctx.lastError}»\n\n`;
       }
       reply += "- ورودی‌های `None` / `undefined`\n";
       reply += "- index خارج از محدوده\n";
@@ -751,9 +968,27 @@ const Chat = window.Chat = (() => {
       if (typeof UI !== "undefined" && UI.renderAttachPreview) UI.renderAttachPreview(null);
     }
 
+    // Ensure offline knowledge dataset is available (non-blocking if already loading)
+    if (window.Knowledge && !Knowledge.isReady()) {
+      try { await Knowledge.load(); } catch (_) {}
+    }
+
     const intentInfo = window.Intent
       ? Intent.detect(text, { messages: conv.messages, files: conv.files })
       : { intent: "general", confidence: 0.5 };
+
+    // Prefer dataset fine-label when confidence is solid
+    let fineIntent = intentInfo.fine || null;
+    if (window.Knowledge && Knowledge.isReady()) {
+      const km = Knowledge.matchIntent(text);
+      if (km && km.fine && km.confidence >= 0.5) {
+        fineIntent = km.fine;
+        if (km.coarse && km.confidence >= (intentInfo.confidence || 0)) {
+          intentInfo.intent = km.coarse;
+          intentInfo.confidence = Math.max(intentInfo.confidence || 0, km.confidence);
+        }
+      }
+    }
 
     conv.messages.push({
       role: "user",
@@ -761,6 +996,8 @@ const Chat = window.Chat = (() => {
       ts: Date.now(),
       meta: {
         intent: intentInfo.intent,
+        fine: fineIntent,
+        confidence: intentInfo.confidence,
         hasFile: !!pendingFile,
         fileName: pendingFile ? pendingFile.name : undefined,
       },

@@ -184,16 +184,84 @@ const Intent = window.Intent = (() => {
 
     // --- Continuity boost from previous intent ---
     if (prevIntent) {
-      if (prevIntent === "debug" && (BUG_MEDIUM.test(t) || FIX_HINT.test(t) || /ادامه|همین|this|more|بیشتر|دیگه/i.test(t))) {
-        scores.debug += 0.2;
+      if (prevIntent === "debug" && (BUG_MEDIUM.test(t) || FIX_HINT.test(t) || /ادامه|همین|this|more|بیشتر|دیگه|درستش|رفعش/i.test(t))) {
+        scores.debug += 0.28;
         reasons.push("continues previous debug");
       }
-      if (prevIntent === "code-review" && (REVIEW.test(t) || /همین|this|more/i.test(t))) {
-        scores["code-review"] += 0.15;
+      if (prevIntent === "code-review" && (REVIEW.test(t) || /همین|this|more|بیشتر|اینو|کدش/i.test(t))) {
+        scores["code-review"] += 0.22;
+        reasons.push("continues previous review");
       }
-      if (prevIntent === "code-generation" && (GENERATE.test(t) || /ادامه|بیشتر|add|also/i.test(t))) {
-        scores["code-generation"] += 0.15;
+      if (prevIntent === "code-generation" && (GENERATE.test(t) || /ادامه|بیشتر|add|also|مثال|کدش/i.test(t))) {
+        scores["code-generation"] += 0.22;
+        reasons.push("continues previous generation");
       }
+      if (prevIntent === "explain" && /بیشتر|ادامه|مثال|توضیح|more|continue/i.test(t)) {
+        scores.explain += 0.25;
+        reasons.push("continues previous explain");
+      }
+    }
+
+    // Short Persian follow-ups without clear keyword → boost last coding intent via history
+    const isShortFa = /^(بیشتر|ادامه|ادامه بده|بیشتر بگو|مثال|مثال بزن|کدش|کدشو|درستش کن|درست کن|رفعش کن|توضیح بده|بده|کن)[\s!.،]*$/i.test(t.trim());
+    if (isShortFa && prevIntent && scores[prevIntent] !== undefined) {
+      scores[prevIntent] = (scores[prevIntent] || 0) + 0.35;
+      reasons.push("short Persian follow-up → " + prevIntent);
+    }
+
+    // Anaphora pointing at code
+    if (/این کد|همین کد|کدش|کدشو|اینو ببین|همین رو/i.test(t)) {
+      if (FIX_HINT.test(t) || BUG_MEDIUM.test(t)) {
+        scores.debug += 0.3;
+        reasons.push("anaphora + fix/bug");
+      } else {
+        scores["code-review"] += 0.28;
+        reasons.push("anaphora → code review");
+      }
+    }
+
+    // ── Knowledge dataset boost (offline terminology + labeled examples) ──
+    let knowledgeMeta = null;
+    if (window.Knowledge && Knowledge.isReady()) {
+      try {
+        knowledgeMeta = Knowledge.matchIntent(t);
+        if (knowledgeMeta && knowledgeMeta.coarse && knowledgeMeta.confidence >= 0.45) {
+          const coarse = knowledgeMeta.coarse;
+          const conf = knowledgeMeta.confidence;
+          if (scores[coarse] !== undefined) {
+            scores[coarse] += 0.25 + conf * 0.35;
+            reasons.push("dataset:" + (knowledgeMeta.fine || coarse));
+          } else if (coarse === "code-review") {
+            scores["code-review"] += 0.25 + conf * 0.35;
+            reasons.push("dataset:" + (knowledgeMeta.fine || coarse));
+          } else if (coarse === "debug") {
+            scores.debug += 0.28 + conf * 0.35;
+            reasons.push("dataset:" + (knowledgeMeta.fine || "debug"));
+          } else if (coarse === "explain") {
+            scores.explain += 0.22 + conf * 0.3;
+            reasons.push("dataset:" + (knowledgeMeta.fine || "explain"));
+          } else if (coarse === "refactor") {
+            scores.refactor += 0.25 + conf * 0.3;
+            reasons.push("dataset:refactor");
+          }
+        }
+        // terminology-only nudge
+        if (knowledgeMeta && knowledgeMeta.terms && knowledgeMeta.terms.length) {
+          const joined = knowledgeMeta.terms.map((x) => (x.en || "") + " " + (x.fa || "")).join(" ").toLowerCase();
+          if (/bug|error|debug|exception|باگ|خطا|دیباگ/.test(joined)) {
+            scores.debug += 0.12;
+            reasons.push("term:debug");
+          }
+          if (/refactor|رفاکتور|بازنویسی/.test(joined)) {
+            scores.refactor += 0.12;
+            reasons.push("term:refactor");
+          }
+          if (/review|بازبینی|ریویو/.test(joined)) {
+            scores["code-review"] += 0.1;
+            reasons.push("term:review");
+          }
+        }
+      } catch (_) { /* knowledge optional */ }
     }
 
     // ── Pick winner ──────────────────────────────────────────────────────
@@ -231,7 +299,9 @@ const Intent = window.Intent = (() => {
       intent: bestIntent,
       confidence: Math.round(confidence * 100) / 100,
       reason,
-      scores, // useful for debugging / future UI
+      scores,
+      fine: knowledgeMeta && knowledgeMeta.fine ? knowledgeMeta.fine : null,
+      knowledge: knowledgeMeta || null,
     };
   }
 
