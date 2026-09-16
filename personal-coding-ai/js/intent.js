@@ -1,6 +1,6 @@
 /**
  * Intent Detection – Multi-signal scoring, context-aware (offline / client-side only)
- * Version 4.0.8 – Stronger Persian + English coverage, history-aware, confidence calibration
+ * Version 4.0.9 – Stronger Persian + English coverage, history-aware, confidence calibration
  */
 const Intent = window.Intent = (() => {
   // ── Code presence signals ──────────────────────────────────────────────
@@ -11,12 +11,12 @@ const Intent = window.Intent = (() => {
 
   // ── Bug / Debug signals (strong Persian + English) ─────────────────────
   const BUG_STRONG = /(traceback|stack\s*trace|exception|TypeError|ValueError|AttributeError|KeyError|IndexError|NullPointer|segfault|crash|panic|unhandled|failed\s+to|cannot\s+read|is\s+not\s+defined|undefined\s+is\s+not|خطای\s+زمان\s+اجرا|استثنا|ترِیس‌بک|ترِیس\s*بک)/i;
-  const BUG_MEDIUM = /(bug|error|exception|fail(ed|ure)?|broken|not\s+working|doesn't\s+work|wrong\s+result|unexpected|باگ|خطا|اشکال|مشکل|کار\s*نمی\s*کنه|کار\s*نمیکنه|درست\s*کار\s*نمیکنه|خراب|اشتباه)/i;
+  const BUG_MEDIUM = /(bug|error|exception|fail(ed|ure)?|broken|not\s+working|doesn't\s+work|wrong\s+result|unexpected|باگ|خطا|اشکال|کار\s*نمی\s*کنه|کار\s*نمیکنه|درست\s*کار\s*نمیکنه|خراب\s*شده|اشتباه\s*می\s*ده)/i;
   const BUG_WEAK   = /(چرا\s+این|چرا\s+اینطوری|چی\s+شده|چی\s+میشه|why\s+(is|does)|what.?s\s+wrong)/i;
 
   // ── Other intents ──────────────────────────────────────────────────────
   const REFACTOR   = /(refactor|clean\s*up|improve|optimize|performance|تمیز|بهینه|بازنویسی|بهتر\s*کن|سریع‌تر|خواناتر)/i;
-  const EXPLAIN    = /(explain|what\s+is|how\s+(does|to|can)|چرا|چیست|چیه|توضیح|چطور|معنی|مفهوم|how\s+it\s+works)/i;
+  const EXPLAIN    = /(explain|what\s+is|how\s+(does|to|can)|چیست|چیه\s*\؟|توضیح\s*(بده|کن)|معنی|مفهوم|how\s+it\s+works|چطور\s*کار\s*می)/i;
   const GENERATE   = /(write|create|generate|implement|make|build|بنویس|بساز|پیاده‌سازی|مثال\s+بزن|کد\s+بده|کد\s+بنویس|sample|snippet)/i;
   const REVIEW     = /(review|check|analyze|look\s+at|بررسی|تحلیل|نقد|نظر\s+بده|چطوره|خوبه\s*؟)/i;
   const FIX_HINT   = /(fix|repair|solve|resolve|درست\s*کن|رفع\s*کن|حل\s*کن|درمان)/i;
@@ -61,6 +61,9 @@ const Intent = window.Intent = (() => {
     if (!t) return { intent: "empty", confidence: 1, reason: "empty input" };
 
     // Meta status questions (not a debug request)
+    if (window.LangCtx && LangCtx.analyze(t).isMeta) {
+      return { intent: "general", confidence: 0.95, reason: "meta-status-question", fine: null, lang: LangCtx.analyze(t) };
+    }
     if (/^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|اوکی\s*شد|فهمیدی|متوجه\s*شدی|did\s+you\s+debug|is\s+it\s+fixed|worked)[\s!.؟،]*$/i.test(t)) {
       return { intent: "general", confidence: 0.92, reason: "meta-status-question", fine: null };
     }
@@ -70,6 +73,9 @@ const Intent = window.Intent = (() => {
     const hasFile = files.length > 0;
     const hasCodeNow = CODE_HINT.test(t) || CODE_BLOCK.test(t) || SHORT_CODE.test(t);
     const hasCodeHist = hasCodeInHistory(msgs);
+    const langInfo = window.LangCtx ? LangCtx.analyze(t) : null;
+    // Prose without code fences — avoid treating FA chat words as code-debug
+    const prose = langInfo ? langInfo.prose : t;
     const hasCode = hasCodeNow || hasCodeHist;
     const prevIntent = lastUserIntent(msgs);
 
@@ -155,14 +161,32 @@ const Intent = window.Intent = (() => {
 
     // --- Explain ---
     if (EXPLAIN.test(t)) {
-      scores.explain += 0.4;
-      reasons.push("explain/how/what keyword");
-      if (hasCode || hasFile || TECH_TOPIC.test(t)) {
-        scores.explain += 0.25;
+      // If clear bug signals, do not let "چرا/توضیح" steal debug intent
+      const bugHeavy = BUG_STRONG.test(t) || BUG_MEDIUM.test(t) || FIX_HINT.test(t);
+      if (bugHeavy) {
+        scores.explain += 0.12;
+        scores.debug += 0.15;
+        reasons.push("explain keyword under bug context → prefer debug");
       } else {
-        // pure conceptual question → slightly lower, may fall to general
-        scores.explain += 0.05;
+        scores.explain += 0.4;
+        reasons.push("explain/how/what keyword");
+        if (hasCode || hasFile || TECH_TOPIC.test(t)) {
+          scores.explain += 0.25;
+        } else {
+          scores.explain += 0.05;
+        }
       }
+    }
+
+    // Mixed FA chat + code fence: mild code-review boost if no bug verbs
+    if (langInfo && langInfo.surface === "mixed" && !BUG_STRONG.test(t) && !FIX_HINT.test(t)) {
+      scores["code-review"] += 0.12;
+      reasons.push("mixed FA+code surface");
+    }
+    if (langInfo && langInfo.surface === "fa_chat" && !hasCode && !hasFile && scores.debug > 0 && scores.debug < 0.45) {
+      // casual FA without evidence → dampen weak debug
+      scores.debug *= 0.55;
+      reasons.push("fa_chat dampen weak debug");
     }
 
     // --- File analysis ---

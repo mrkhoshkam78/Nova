@@ -1,12 +1,12 @@
 /**
- * knowledge.js – Nova V4.0.8 Local Knowledge Layer (offline, algorithm level ~12/20)
+ * knowledge.js – Nova V4.0.9 Local Knowledge Layer (offline, algorithm level ~12/20)
  *
  * Pipeline: normalize → signals → score → map → continuity
  * Uses NOVA_FA_DB.json only as a local dataset (never dumps full DB into prompts).
  */
 const Knowledge = window.Knowledge = (() => {
   const DATASET_URL = "data/NOVA_FA_DB.json";
-  const VERSION = "4.0.8";
+  const VERSION = "4.0.9";
 
   const FINE_TO_COARSE = {
     debug: "debug",

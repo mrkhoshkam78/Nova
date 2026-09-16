@@ -43,7 +43,7 @@ const Chat = window.Chat = (() => {
         }
         return c;
       });
-      const payload = { conversations: list, activeId, version: "4.0.8" };
+      const payload = { conversations: list, activeId, version: "4.0.9" };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
       // QuotaExceeded: drop oldest conversations and retry once
@@ -56,7 +56,7 @@ const Chat = window.Chat = (() => {
             content: typeof f.content === "string" ? f.content.slice(0, 8000) : "",
           })),
         }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ conversations: smaller, activeId, version: "4.0.8" }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ conversations: smaller, activeId, version: "4.0.9" }));
       } catch (_) {
         console.warn("[Nova] conversation storage full – oldest chats may not persist");
       }
@@ -860,7 +860,7 @@ const Chat = window.Chat = (() => {
       reply += "- اگر می‌خوای عمیق‌تر برویم، جزئیات بیشتری از همان موضوع بفرست.\n";
       reply += "- اگر موضوع عوض شده، مستقیم بگو تا روی موضوع جدید تمرکز کنم.\n";
       reply += "- اگر کد یا error داری، paste کن تا دقیق تحلیل کنم.\n\n";
-      reply += "من **Nova V4.0.8** هستم و Context + دانش فارسی برنامه‌نویسی را نگه می‌دارم.";
+      reply += "من **Nova V4.0.9** هستم و Context + دانش فارسی برنامه‌نویسی را نگه می‌دارم.";
       return reply;
     }
 
@@ -1018,20 +1018,20 @@ const Chat = window.Chat = (() => {
     if (intentName !== "debug") return false;
     const t = (text || "").trim();
     if (!t) return false;
-    // Meta / status questions about the assistant — never run Debugger
+    const hasFile = !!(conv && conv.files && conv.files.length);
+    const hasPrevCode = !!(conv && conv.messages && conv.messages.some((m) => /```[\s\S]{8,}```/.test(m.content || "")));
+    if (window.LangCtx) {
+      return LangCtx.looksLikeBugReport(t, { hasFile: hasFile, hasPrevCode: hasPrevCode });
+    }
     if (/^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|اوکی\s*شد|فهمیدی|متوجه\s*شدی|done\??|did\s+you\s+debug|is\s+it\s+fixed|worked\??)[\s!.؟،]*$/i.test(t)) {
       return false;
     }
-    // Past-tense / status about debugging without new evidence
     if (/دیباگ\s*کردی|آیا\s*دیباگ|did\s+you\s+debug|have\s+you\s+fixed/i.test(t) && t.length < 40) {
       return false;
     }
     const hasFence = /```[\s\S]{8,}```/.test(t);
     const hasStack = /traceback|stack\s*trace|TypeError|ValueError|NullPointer|at\s+\S+:\d+/i.test(t);
     const hasErrorToken = /\b(error|exception|bug|crash|fail)\b|خطا|باگ|استثنا|کار\s*نمی\s*کنه/i.test(t);
-    const hasFile = !!(conv && conv.files && conv.files.length);
-    const hasPrevCode = !!(conv && conv.messages && conv.messages.some((m) => /```[\s\S]{8,}```/.test(m.content || "")));
-    // Need real evidence OR explicit request with code context
     if (hasFence || hasStack || hasFile) return true;
     if (hasErrorToken && (hasPrevCode || t.length > 60)) return true;
     if (/دیباگ\s*کن|debug\s*(this|it)|fix\s*this\s*bug|این\s*باگ/i.test(t) && (hasPrevCode || hasFile)) return true;
@@ -1120,6 +1120,8 @@ const Chat = window.Chat = (() => {
         intent: intentInfo.intent,
         fine: fineIntent,
         confidence: intentInfo.confidence,
+        lang: window.LangCtx ? LangCtx.analyze(text).surface : null,
+        preferReplyLang: window.LangCtx ? LangCtx.analyze(text).preferReplyLang : null,
         hasFile: !!pendingFile,
         fileName: pendingFile ? pendingFile.name : undefined,
       },

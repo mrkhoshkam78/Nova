@@ -1,11 +1,11 @@
 /**
- * config.js – Nova V4.0.8 application configuration
+ * config.js – Nova V4.0.9 application configuration
  * API keys are NEVER stored here. Only the public gateway URL.
  */
 
 const AppConfig = window.AppConfig = {
   appName: "Nova",
-  version: "4.0.8",
+  version: "4.0.9",
 
   // Prefer real LLM via gateway. Mock only when gateway is unreachable.
   useMockAI: false,

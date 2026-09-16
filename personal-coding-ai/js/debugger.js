@@ -128,7 +128,7 @@ const Debugger = window.Debugger = (() => {
     else if (/build failed|compile error|tsc|webpack/i.test(text)) failureType = "Build Failure";
 
     const expected = inp.expectedBehavior || "Not specified by user";
-    const actual = inp.actualBehavior || inp.errorMessage || "Failure observed (details in evidence)";
+    const actual = inp.actualBehavior || inp.errorMessage || (inp.stackTrace ? "See stack trace" : "Failure observed (details in evidence)");
 
     session.classification = {
       failureType,
