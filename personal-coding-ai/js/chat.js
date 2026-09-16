@@ -284,34 +284,47 @@ const Chat = window.Chat = (() => {
     messages.forEach((m) => {
       if (m.role !== "user") return;
       const c = (m.content || "").trim();
-      // Skip questions: "اسم من چیست؟"
-      if (/چیست|چیه|چی بود|what.?s my name|what is my name/i.test(c)) return;
+      // Skip pure questions: "اسم من چیست؟" / "اسمم چیه؟"
+      if (/اسم(?:م|\s*من)?\s*(چیست|چیه|چی\s*بود|چی\s*هست)|what.?s\s+my\s+name|what\s+is\s+my\s+name/i.test(c) &&
+          !/اسم(?:م|\s*من)\s+[\u0600-\u06FFa-zA-Z]{2,}/.test(c)) {
+        return;
+      }
       let name = null;
 
-      // Capture the token(s) after "اسم من" / "اسمم"
-      let mFa = c.match(/اسم(?:م|\s*من)\s+([^\s،.؟!]+)/);
-      if (mFa) name = mFa[1];
+      // 1) "اسم من علیرضا است" | "اسمم علیرضا است" | "اسم من علیرضا"
+      let mFa = c.match(/اسم(?:م|\s*من)\s+([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s]{0,30}?)(?:\s+(?:است|هست|هستم|می‌باشد|می‌باشم))?(?:[\s،.؟!]|$)/);
+      if (mFa) name = mFa[1].trim();
 
+      // 2) "من علیرضا هستم" | "من علی رضایی هستم"
       if (!name) {
-        let mEn = c.match(/my\s+name\s+is\s+([A-Za-z\u0600-\u06FF]+)/i);
-        if (mEn) name = mEn[1];
+        let mSelf = c.match(/من\s+([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s]{1,28}?)\s+(?:هستم|هست|است)/);
+        if (mSelf) name = mSelf[1].trim();
       }
 
+      // 3) English
       if (!name) {
-        let mSelf = c.match(/من\s+([^\s،.؟!]+)\s+هستم/);
-        if (mSelf) name = mSelf[1];
+        let mEn = c.match(/my\s+name\s+is\s+([A-Za-z\u0600-\u06FF][A-Za-z\u0600-\u06FF\s]{0,30}?)(?:[.!,?]|$)/i);
+        if (mEn) name = mEn[1].trim();
+      }
+
+      // 4) "اسمم = علیرضا" or "اسم من: علی"
+      if (!name) {
+        let mEq = c.match(/اسم(?:م|\s*من)\s*[=:]\s*([\u0600-\u06FFa-zA-Z][\u0600-\u06FFa-zA-Z\s]{0,25})/);
+        if (mEq) name = mEq[1].trim();
       }
 
       if (name) {
-        name = name.replace(/[؟!.,]/g, "").trim();
-        // Glued copula: رضاست (رضا+ست) → رضا ; separate already excluded by [^\s]
+        name = name.replace(/[؟!.,؛:]+$/g, "").trim();
+        // Remove glued Persian copulas: رضاست → رضا ، علیرضاست → علیرضا
         if (/[اوی]ست$/.test(name) && name.length >= 4) name = name.slice(0, -2);
         else if (/است$/.test(name) && name.length >= 5) name = name.slice(0, -3);
         else if (/هستم$/.test(name) && name.length >= 6) name = name.slice(0, -4);
         else if (/هست$/.test(name) && name.length >= 5) name = name.slice(0, -3);
+        // Collapse extra spaces in multi-word names
+        name = name.replace(/\s+/g, " ").trim();
       }
 
-      if (name && name.length >= 2 && !/^(من|چیست|چیه|is|what)$/i.test(name)) {
+      if (name && name.length >= 2 && !/^(من|چیست|چیه|is|what|اسم|نام)$/i.test(name)) {
         facts.name = name;
       }
     });
@@ -353,37 +366,38 @@ const Chat = window.Chat = (() => {
 
   function detectIntent(text) {
     const t = text.toLowerCase().trim();
+    const raw = (text || "").trim();
 
-    // Name recall
-    if (/اسم\s*(من)?\s*(چیست|چیه|چی بود)|what('?s| is) my name/i.test(t)) {
+    // Name recall – stronger Persian forms
+    if (/اسم(?:م|\s*من)?\s*(چیست|چیه|چی\s*بود|چی\s*هست)|what\s*('?s| is)\s*my\s*name/i.test(raw)) {
       return "ask-name";
     }
-    // Self intro of user
-    if (/اسم(?:\s*من)?\s+.{1,30}(است|هست|هستم)|my\s+name\s+is/i.test(t)) {
+    // Self intro of user – covers: اسم من X است / اسمم X / من X هستم / my name is
+    if (/اسم(?:م|\s*من)\s+[\u0600-\u06FFa-zA-Z].{0,40}(است|هست|هستم|می‌باشد)?|من\s+[\u0600-\u06FFa-zA-Z].{1,30}\s+هستم|my\s+name\s+is/i.test(raw)) {
       return "tell-name";
     }
     // Explicit topic switch
-    if (/نه صبر|صبر کن|بگذریم|موضوع رو عوض|در مورد .+ بگو|about\s+\w+\s+instead|switch\s+to/i.test(t)) {
+    if (/نه\s*صبر|صبر\s*کن|بگذریم|موضوع\s*رو\s*عوض|موضوع\s*را\s*عوض|در\s*مورد\s+.+\s*بگو|about\s+\w+\s+instead|switch\s+to/i.test(raw)) {
       return "topic-switch";
     }
     // Self-introduction request for AI
-    if (/خودت را معرفی|introduce yourself|کی هستی|who are you|چیستی/i.test(t)) {
+    if (/خودت\s*را\s*معرفی|introduce\s+yourself|کی\s*هستی|who\s+are\s+you|چیستی|تو\s*کی\s*هستی/i.test(raw)) {
       return "intro";
     }
-    if (/```|def |function |class |const |let |var |import /.test(t) || t.includes("این کد") || t.includes("this code") || t.includes("همین کد")) {
+    if (/```|def |function |class |const |let |var |import /.test(raw) || /این\s*کد|this\s+code|همین\s*کد/i.test(raw)) {
       return "code-review";
     }
-    if (t.includes("bug") || t.includes("error") || t.includes("خطا") || t.includes("اشکال") || t.includes("باگ") || t.includes("fix")) {
+    if (/\b(bug|error|exception|traceback|crash)\b|خطا|اشکال|باگ|کار\s*نمی\s*کنه|کار\s*نمیکنه|درست\s*کار\s*نمیکنه/i.test(raw)) {
       return "debug";
     }
-    if (t.includes("refactor") || t.includes("تمیز") || t.includes("بهتر بنویس") || t.includes("improve") || t.includes("clean")) {
+    if (/refactor|تمیز|بهتر\s*بنویس|improve|clean\s*up|بهینه/i.test(raw)) {
       return "refactor";
     }
-    if (t.includes("decorator")) return "decorator";
-    if (t.includes("یاد") || t.includes("learn") || t.includes("شروع") || t.includes("example") || t.includes("مثال") || t.includes("چطور") || t.includes("how") || t.includes("چیست") || t.includes("چیه")) {
+    if (/decorator|دکوریتور/i.test(raw)) return "decorator";
+    if (/یاد|learn|شروع|example|مثال|چطور|how\s+(to|does)|چیست|چیه|توضیح/i.test(raw)) {
       return "explain";
     }
-    if (t.includes("hello") || t.includes("سلام") || t.includes("hi ") || t === "hi" || t === "hello") return "greeting";
+    if (/^(سلام|درود|hi|hello|hey)[\s!.،,]*$/i.test(raw) || t === "hi" || t === "hello") return "greeting";
     return "general";
   }
 
@@ -405,10 +419,23 @@ const Chat = window.Chat = (() => {
    */
   function generateContextualReply(userText, history) {
     const ctx = buildContextSummary(history);
+    // Local detect first (handles Persian name memory + topic-switch)
     let intent = detectIntent(userText);
+    const localIntent = intent;
+
+    // Smart Intent (from intent.js) – but NEVER overwrite critical Persian name intents
     if (window.Intent) {
       const smart = Intent.detect(userText, { messages: history, files: (getActive() && getActive().files) || [] });
-      if (smart && smart.intent) intent = smart.intent;
+      if (smart && smart.intent) {
+        const protectedIntents = ["tell-name", "ask-name", "topic-switch", "intro"];
+        if (!protectedIntents.includes(localIntent)) {
+          intent = smart.intent;
+        }
+        // If local said general but smart is more specific → take smart
+        if (localIntent === "general" && smart.intent !== "general" && smart.confidence >= 0.65) {
+          intent = smart.intent;
+        }
+      }
     }
     // Pure general chat: do not force coding topics
     if (intent === "general" && !(ctx && ctx.topics && ctx.topics.length)) {

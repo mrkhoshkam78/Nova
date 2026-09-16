@@ -1,88 +1,238 @@
 /**
- * Intent Detection – context-aware, not pure keyword matching.
+ * Intent Detection – Multi-signal scoring, context-aware (offline / client-side only)
+ * Version 2.1 – Stronger Persian + English coverage, history-aware, confidence calibration
  */
 const Intent = window.Intent = (() => {
-  const CODE_HINT = /```|def\s+\w+|function\s+\w+|class\s+\w+|const\s+\w+|let\s+\w+|var\s+\w+|import\s+|from\s+\w+\s+import|public\s+class|fn\s+\w+|#include|console\.log|print\(|return\s+|async\s+|await\s+/i;
-  const BUG_HINT = /(bug|error|exception|traceback|stack\s*trace|crash|fail|خطا|باگ|اشکال|مشکل)/i;
-  const REFACTOR_HINT = /(refactor|clean|improve|optimize|تمیز|بهین|بازنویسی)/i;
-  const EXPLAIN_HINT = /(explain|what\s+is|how\s+(does|to)|چیست|چیه|توضیح|چطور)/i;
-  const GENERATE_HINT = /(write|create|generate|implement|بنویس|بساز|پیاده‌سازی|مثال)/i;
-  const REVIEW_HINT = /(review|check|analyze|بررسی|تحلیل)/i;
-  const GREETING = /^(سلام|hi|hello|hey|درود)[\s!.،,]*$/i;
-  const INTRO = /خودت را معرفی|introduce yourself|who are you|کی هستی/i;
-  const GENERAL_CHAT = /(چطوری|حالت|خوبی|ممنون|مرسی|خداحافظ|bye|thanks|thank you|how are you)/i;
+  // ── Code presence signals ──────────────────────────────────────────────
+  const CODE_HINT = /```[\s\S]*?```|def\s+\w+\s*\(|function\s+\w+\s*\(|class\s+\w+|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|import\s+[\w{]|from\s+[\w.]+\s+import|public\s+(class|static|void)|fn\s+\w+|#include\s*<|console\.(log|error|warn)|print\s*\(|return\s+[^;]+;|async\s+function|await\s+\w+|=>\s*[{(]|interface\s+\w+|type\s+\w+\s*=/i;
 
+  const CODE_BLOCK = /```[\s\S]{10,}```/;
+  const SHORT_CODE = /(def\s+\w+|function\s+\w+|class\s+\w+|const\s+\w+|import\s+|print\(|console\.log)/i;
+
+  // ── Bug / Debug signals (strong Persian + English) ─────────────────────
+  const BUG_STRONG = /(traceback|stack\s*trace|exception|TypeError|ValueError|AttributeError|KeyError|IndexError|NullPointer|segfault|crash|panic|unhandled|failed\s+to|cannot\s+read|is\s+not\s+defined|undefined\s+is\s+not|خطای\s+زمان\s+اجرا|استثنا|ترِیس‌بک|ترِیس\s*بک)/i;
+  const BUG_MEDIUM = /(bug|error|exception|fail(ed|ure)?|broken|not\s+working|doesn't\s+work|wrong\s+result|unexpected|باگ|خطا|اشکال|مشکل|کار\s*نمی\s*کنه|کار\s*نمیکنه|درست\s*کار\s*نمیکنه|خراب|اشتباه)/i;
+  const BUG_WEAK   = /(چرا\s+این|چرا\s+اینطوری|چی\s+شده|چی\s+میشه|why\s+(is|does)|what.?s\s+wrong)/i;
+
+  // ── Other intents ──────────────────────────────────────────────────────
+  const REFACTOR   = /(refactor|clean\s*up|improve|optimize|performance|تمیز|بهینه|بازنویسی|بهتر\s*کن|سریع‌تر|خواناتر)/i;
+  const EXPLAIN    = /(explain|what\s+is|how\s+(does|to|can)|چرا|چیست|چیه|توضیح|چطور|معنی|مفهوم|how\s+it\s+works)/i;
+  const GENERATE   = /(write|create|generate|implement|make|build|بنویس|بساز|پیاده‌سازی|مثال\s+بزن|کد\s+بده|کد\s+بنویس|sample|snippet)/i;
+  const REVIEW     = /(review|check|analyze|look\s+at|بررسی|تحلیل|نقد|نظر\s+بده|چطوره|خوبه\s*؟)/i;
+  const FIX_HINT   = /(fix|repair|solve|resolve|درست\s*کن|رفع\s*کن|حل\s*کن|درمان)/i;
+  const CONVERT    = /(convert|translate|to\s+(python|js|ts|java|go|rust)|تبدیل|به\s+(پایتون|جاوااسکریپت))/i;
+  const GREETING   = /^(سلام|درود|hi|hello|hey|صبح\s*بخیر|عصر\s*بخیر)[\s!.،,]*$/i;
+  const INTRO      = /(خودت\s*را\s*معرفی|introduce\s+yourself|who\s+are\s+you|کی\s*هستی|اسمت\s*چیه|تو\s*کی\s*هستی)/i;
+  const GENERAL    = /(چطوری|حالت\s*خوبه|خوبی|ممنون|مرسی|خداحافظ|bye|thanks|thank\s+you|how\s+are\s+you|خسته\s*نباشی)/i;
+  const TECH_TOPIC = /\b(python|javascript|typescript|react|vue|angular|node\.?js|django|fastapi|flask|express|html|css|sql|git|docker|kubernetes|api|rest|graphql|async|await|promise|hook|component)\b/i;
+
+  // ── Helpers ────────────────────────────────────────────────────────────
   function hasCodeInHistory(messages) {
-    if (!messages || !messages.length) return false;
-    return messages.some((m) => CODE_HINT.test(m.content || "") || (m.meta && m.meta.hasCode));
+    if (!Array.isArray(messages) || !messages.length) return false;
+    // Look at last 6 messages only (recent context)
+    const recent = messages.slice(-6);
+    return recent.some((m) => {
+      const c = m.content || "";
+      return CODE_HINT.test(c) || CODE_BLOCK.test(c) || (m.meta && m.meta.hasCode);
+    });
   }
 
-  function hasUploadedFile(conv) {
-    return !!(conv && conv.files && conv.files.length);
+  function lastUserIntent(messages) {
+    if (!Array.isArray(messages)) return null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === "user" && m.meta && m.meta.intent) return m.meta.intent;
+    }
+    return null;
+  }
+
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
   }
 
   /**
+   * Multi-signal scoring engine
    * @param {string} text
    * @param {{messages?: Array, files?: Array}} context
-   * @returns {{intent: string, confidence: number, reason: string}}
+   * @returns {{intent: string, confidence: number, reason: string, scores?: Object}}
    */
   function detect(text, context) {
     const t = (text || "").trim();
-    const lower = t.toLowerCase();
+    if (!t) return { intent: "empty", confidence: 1, reason: "empty input" };
+
     const msgs = (context && context.messages) || [];
     const files = (context && context.files) || [];
-    const hasCode = CODE_HINT.test(t) || hasCodeInHistory(msgs);
-    const hasFile = files.length > 0 || hasUploadedFile(context);
+    const hasFile = files.length > 0;
+    const hasCodeNow = CODE_HINT.test(t) || CODE_BLOCK.test(t) || SHORT_CODE.test(t);
+    const hasCodeHist = hasCodeInHistory(msgs);
+    const hasCode = hasCodeNow || hasCodeHist;
+    const prevIntent = lastUserIntent(msgs);
 
-    if (!t) return { intent: "empty", confidence: 1, reason: "empty" };
-
-    if (INTRO.test(t)) return { intent: "intro", confidence: 0.95, reason: "self-intro" };
-    if (GREETING.test(t)) return { intent: "greeting", confidence: 0.9, reason: "greeting" };
-    if (GENERAL_CHAT.test(t) && !hasCode && !BUG_HINT.test(t)) {
-      return { intent: "general", confidence: 0.85, reason: "casual chat" };
+    // ── Hard early exits ─────────────────────────────────────────────────
+    if (INTRO.test(t)) {
+      return { intent: "intro", confidence: 0.96, reason: "self-introduction request" };
     }
-
-    // File analysis when user refers to upload
-    if (hasFile && /(این فایل|این کد|uploaded|file|analyze|بررسی فایل|تحلیل)/i.test(t)) {
-      if (BUG_HINT.test(t)) return { intent: "debug", confidence: 0.9, reason: "debug uploaded file" };
-      return { intent: "file-analysis", confidence: 0.88, reason: "analyze uploaded file" };
+    if (GREETING.test(t)) {
+      return { intent: "greeting", confidence: 0.94, reason: "greeting" };
     }
-
-    if (BUG_HINT.test(t)) {
-      const codeCtx = hasCode || hasFile || CODE_HINT.test(t) || /(code|کد|function|تابع)/i.test(t);
-      return {
-        intent: "debug",
-        confidence: codeCtx ? 0.9 : 0.75,
-        reason: codeCtx ? "bug report with code context" : "bug mention",
-      };
+    if (GENERAL.test(t) && !hasCode && !BUG_MEDIUM.test(t) && !TECH_TOPIC.test(t)) {
+      return { intent: "general", confidence: 0.88, reason: "casual / social chat" };
     }
 
-    if (REFACTOR_HINT.test(t)) return { intent: "refactor", confidence: 0.85, reason: "refactor request" };
-    if (REVIEW_HINT.test(t) && (hasCode || hasFile || CODE_HINT.test(t))) {
-      return { intent: "code-review", confidence: 0.85, reason: "code review" };
+    // ── Score table ──────────────────────────────────────────────────────
+    const scores = {
+      debug: 0,
+      "code-review": 0,
+      refactor: 0,
+      "code-generation": 0,
+      explain: 0,
+      "file-analysis": 0,
+      convert: 0,
+      programming: 0,
+      general: 0.15, // small base
+    };
+
+    const reasons = [];
+
+    // --- Debug signals ---
+    if (BUG_STRONG.test(t)) {
+      scores.debug += 0.55;
+      reasons.push("strong error/traceback");
     }
-    if (CODE_HINT.test(t) && REVIEW_HINT.test(t)) return { intent: "code-review", confidence: 0.9, reason: "code + review" };
-    if (CODE_HINT.test(t) && GENERATE_HINT.test(t) === false && !EXPLAIN_HINT.test(t)) {
-      return { intent: "code-review", confidence: 0.75, reason: "code pasted" };
+    if (BUG_MEDIUM.test(t)) {
+      scores.debug += 0.35;
+      reasons.push("bug/error keyword");
     }
-    if (GENERATE_HINT.test(t) && (/\b(code|function|class|script|کد|تابع|کلاس)\b/i.test(t) || hasCode)) {
-      return { intent: "code-generation", confidence: 0.85, reason: "generate code" };
+    if (BUG_WEAK.test(t)) {
+      scores.debug += 0.18;
+      reasons.push("why-is-this-wrong phrasing");
     }
-    if (EXPLAIN_HINT.test(t) && (hasCode || /\b(python|javascript|react|api|کد|برنامه)\b/i.test(t))) {
-      return { intent: "explain", confidence: 0.8, reason: "programming explanation" };
+    if (FIX_HINT.test(t) && (hasCode || BUG_MEDIUM.test(t) || BUG_STRONG.test(t))) {
+      scores.debug += 0.25;
+      reasons.push("fix + code/bug context");
     }
-    if (EXPLAIN_HINT.test(t) && !hasCode && !hasFile) {
-      return { intent: "general", confidence: 0.7, reason: "general question" };
+    if (hasCode && (BUG_MEDIUM.test(t) || BUG_STRONG.test(t) || FIX_HINT.test(t))) {
+      scores.debug += 0.22;
+    }
+    if (hasFile && (BUG_MEDIUM.test(t) || BUG_STRONG.test(t))) {
+      scores.debug += 0.18;
+      reasons.push("uploaded file + bug");
     }
 
-    // Programming question without forcing code analysis
-    if (/\b(python|javascript|typescript|react|node|django|fastapi|html|css|sql|git)\b/i.test(t)) {
-      return { intent: "programming", confidence: 0.75, reason: "tech topic" };
+    // --- Code review ---
+    if (REVIEW.test(t) && (hasCode || hasFile || hasCodeNow)) {
+      scores["code-review"] += 0.48;
+      reasons.push("review + code/file");
+    }
+    if (hasCodeNow && !GENERATE.test(t) && !EXPLAIN.test(t) && !BUG_MEDIUM.test(t)) {
+      scores["code-review"] += 0.32;
+      reasons.push("code pasted without generate/explain");
+    }
+    if (hasCodeHist && REVIEW.test(t)) {
+      scores["code-review"] += 0.15;
     }
 
-    if (hasCode) return { intent: "code-review", confidence: 0.65, reason: "contains code" };
+    // --- Refactor ---
+    if (REFACTOR.test(t)) {
+      scores.refactor += 0.55;
+      reasons.push("refactor/optimize keyword");
+      if (hasCode || hasFile) scores.refactor += 0.2;
+    }
 
-    return { intent: "general", confidence: 0.6, reason: "default general" };
+    // --- Generate ---
+    if (GENERATE.test(t)) {
+      scores["code-generation"] += 0.45;
+      reasons.push("generate/write keyword");
+      if (/\b(code|function|class|script|component|hook|کد|تابع|کلاس|کامپوننت)\b/i.test(t) || hasCode) {
+        scores["code-generation"] += 0.25;
+      }
+    }
+
+    // --- Explain ---
+    if (EXPLAIN.test(t)) {
+      scores.explain += 0.4;
+      reasons.push("explain/how/what keyword");
+      if (hasCode || hasFile || TECH_TOPIC.test(t)) {
+        scores.explain += 0.25;
+      } else {
+        // pure conceptual question → slightly lower, may fall to general
+        scores.explain += 0.05;
+      }
+    }
+
+    // --- File analysis ---
+    if (hasFile && /(این\s*فایل|این\s*کد|uploaded|file|analyze|بررسی\s*فایل|تحلیل\s*فایل|اینو\s*ببین)/i.test(t)) {
+      scores["file-analysis"] += 0.5;
+      reasons.push("reference to uploaded file");
+      if (BUG_MEDIUM.test(t) || BUG_STRONG.test(t)) {
+        scores.debug += 0.3; // prefer debug when bug + file
+      }
+    }
+
+    // --- Convert ---
+    if (CONVERT.test(t)) {
+      scores.convert += 0.6;
+      reasons.push("language conversion request");
+      if (hasCode) scores.convert += 0.2;
+    }
+
+    // --- Programming topic ---
+    if (TECH_TOPIC.test(t) && scores.debug < 0.3 && scores["code-generation"] < 0.3) {
+      scores.programming += 0.4;
+      reasons.push("tech topic mentioned");
+    }
+
+    // --- Continuity boost from previous intent ---
+    if (prevIntent) {
+      if (prevIntent === "debug" && (BUG_MEDIUM.test(t) || FIX_HINT.test(t) || /ادامه|همین|this|more|بیشتر|دیگه/i.test(t))) {
+        scores.debug += 0.2;
+        reasons.push("continues previous debug");
+      }
+      if (prevIntent === "code-review" && (REVIEW.test(t) || /همین|this|more/i.test(t))) {
+        scores["code-review"] += 0.15;
+      }
+      if (prevIntent === "code-generation" && (GENERATE.test(t) || /ادامه|بیشتر|add|also/i.test(t))) {
+        scores["code-generation"] += 0.15;
+      }
+    }
+
+    // ── Pick winner ──────────────────────────────────────────────────────
+    let bestIntent = "general";
+    let bestScore = scores.general;
+
+    for (const [intent, score] of Object.entries(scores)) {
+      if (score > bestScore) {
+        bestScore = score;
+        bestIntent = intent;
+      }
+    }
+
+    // Confidence calibration
+    let confidence = clamp(0.45 + bestScore * 0.55, 0.5, 0.97);
+
+    // Special overrides for clarity
+    if (bestIntent === "debug" && (BUG_STRONG.test(t) || (hasCode && BUG_MEDIUM.test(t)))) {
+      confidence = Math.max(confidence, 0.88);
+    }
+    if (bestIntent === "general" && !TECH_TOPIC.test(t) && !hasCode) {
+      confidence = Math.min(confidence, 0.75);
+    }
+
+    // If almost everything is low → general
+    if (bestScore < 0.28) {
+      bestIntent = "general";
+      confidence = 0.55;
+      reasons.push("low signal → general");
+    }
+
+    const reason = reasons.length ? reasons.slice(0, 3).join(" + ") : "default scoring";
+
+    return {
+      intent: bestIntent,
+      confidence: Math.round(confidence * 100) / 100,
+      reason,
+      scores, // useful for debugging / future UI
+    };
   }
 
   return { detect };
