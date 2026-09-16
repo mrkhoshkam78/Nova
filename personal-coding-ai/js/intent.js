@@ -1,6 +1,6 @@
 /**
  * Intent Detection – Multi-signal scoring, context-aware (offline / client-side only)
- * Version 2.1 – Stronger Persian + English coverage, history-aware, confidence calibration
+ * Version 4.0.1 – Stronger Persian + English coverage, history-aware, confidence calibration
  */
 const Intent = window.Intent = (() => {
   // ── Code presence signals ──────────────────────────────────────────────
@@ -224,7 +224,15 @@ const Intent = window.Intent = (() => {
     let knowledgeMeta = null;
     if (window.Knowledge && Knowledge.isReady()) {
       try {
-        knowledgeMeta = Knowledge.matchIntent(t);
+        const prevFine = lastUserIntent(msgs); // may be coarse; fine preferred from meta below
+        let prevFineLabel = null;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].role === "user" && msgs[i].meta && msgs[i].meta.fine) {
+            prevFineLabel = msgs[i].meta.fine;
+            break;
+          }
+        }
+        knowledgeMeta = Knowledge.matchIntent(t, { prevFine: prevFineLabel });
         if (knowledgeMeta && knowledgeMeta.coarse && knowledgeMeta.confidence >= 0.45) {
           const coarse = knowledgeMeta.coarse;
           const conf = knowledgeMeta.confidence;

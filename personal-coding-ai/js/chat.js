@@ -394,6 +394,7 @@ const Chat = window.Chat = (() => {
       lastUser: (lastUserMsg && lastUserMsg.content) || "",
       lastAssistant: (lastAsstMsg && lastAsstMsg.content) || "",
       lastIntent: (lastUserMsg && lastUserMsg.meta && lastUserMsg.meta.intent) || null,
+      lastFine: (lastUserMsg && lastUserMsg.meta && lastUserMsg.meta.fine) || null,
       lastCode,
       lastCodeLang,
       lastError,
@@ -532,17 +533,25 @@ const Chat = window.Chat = (() => {
     let fineLabel = null;
     let termHits = [];
     if (window.Knowledge && Knowledge.isReady()) {
-      const km = Knowledge.matchIntent(userText);
+      const km = Knowledge.matchIntent(userText, { prevFine: ctx && ctx.lastFine });
       if (km) {
         fineLabel = km.fine;
         termHits = km.terms || [];
         // Align coarse intent with dataset when stronger
-        if (km.coarse && km.confidence >= 0.55) {
+        if (km.coarse && km.confidence >= 0.5) {
           const protectedLocal = ["tell-name", "ask-name", "topic-switch", "intro", "greeting"];
           if (!protectedLocal.includes(intent)) {
             intent = km.coarse;
           }
         }
+      }
+    }
+    // Inherit fine label on short follow-ups when matcher is weak
+    if (!fineLabel && ctx && ctx.lastFine && intent === "follow-up") {
+      fineLabel = ctx.lastFine;
+      if (window.Knowledge) {
+        const mapped = Knowledge.mapFineToCoarse(fineLabel);
+        if (mapped) intent = mapped;
       }
     }
 
@@ -800,19 +809,27 @@ const Chat = window.Chat = (() => {
     if (hasContext) {
       const lastUserShort = (ctx.lastUser || "").slice(0, 80);
       let reply = "پیامت را در ادامه مکالمه فعلی فهمیدم";
-      if (topicHint) reply += ` (موضوع‌های باز: **${topicHint}**)`;
+      if (fineLabel) reply += ` (تمرکز: **${fineLabel}**)`;
+      else if (topicHint) reply += ` (موضوع‌های باز: **${topicHint}**)`;
       if (allFacts.name) reply += ` — ${allFacts.name}`;
       reply += ".\n\n";
 
+      if (termHits.length && window.Knowledge) {
+        reply += "اصطلاحات مرتبط از دانش محلی:\n" + Knowledge.describeTerms(termHits, 3) + "\n\n";
+      }
+
       if (lastUserShort) {
         reply += `قبلاً گفته بودی: «${lastUserShort}${ctx.lastUser.length > 80 ? "…" : ""}»\n\n`;
+      }
+      if (ref.kind === "code" && ref.snippet) {
+        reply += "کد قبلی در حافظهٔ مکالمه است؛ می‌توانی بگویی «درستش کن» یا «توضیح بده».\n\n";
       }
 
       reply += "بر اساس همان Context:\n";
       reply += "- اگر می‌خوای عمیق‌تر برویم، جزئیات بیشتری از همان موضوع بفرست.\n";
       reply += "- اگر موضوع عوض شده، مستقیم بگو تا روی موضوع جدید تمرکز کنم.\n";
       reply += "- اگر کد یا error داری، paste کن تا دقیق تحلیل کنم.\n\n";
-      reply += "من **Nova** هستم و Context همین Conversation را نگه می‌دارم.";
+      reply += "من **Nova V4.0.1** هستم و Context + دانش فارسی برنامه‌نویسی را نگه می‌دارم.";
       return reply;
     }
 
@@ -980,10 +997,15 @@ const Chat = window.Chat = (() => {
     // Prefer dataset fine-label when confidence is solid
     let fineIntent = intentInfo.fine || null;
     if (window.Knowledge && Knowledge.isReady()) {
-      const km = Knowledge.matchIntent(text);
-      if (km && km.fine && km.confidence >= 0.5) {
+      const prevFine = (conv.messages || [])
+        .filter((m) => m.role === "user" && m.meta && m.meta.fine)
+        .slice(-1)[0];
+      const km = Knowledge.matchIntent(text, {
+        prevFine: prevFine && prevFine.meta ? prevFine.meta.fine : null,
+      });
+      if (km && km.fine && km.confidence >= 0.48) {
         fineIntent = km.fine;
-        if (km.coarse && km.confidence >= (intentInfo.confidence || 0)) {
+        if (km.coarse && km.confidence >= (intentInfo.confidence || 0) * 0.9) {
           intentInfo.intent = km.coarse;
           intentInfo.confidence = Math.max(intentInfo.confidence || 0, km.confidence);
         }
