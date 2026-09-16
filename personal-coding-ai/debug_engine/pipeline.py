@@ -117,14 +117,31 @@ def collect_evidence(session: DebugSession) -> DebugSession:
         ))
 
     if inp.user_description:
-        evidence.append(EvidenceItem(
-            id=_uid("ev"),
-            source="user",
-            message=inp.user_description,
-            reliability="possible",
-            kind="user_report",
-            confidence=0.45,
+        ud = (inp.user_description or "").strip()
+        # Strip code fences so we score the prose
+        import re as _re
+        prose = _re.sub(r"```[\s\S]*?```", " ", ud).strip()
+        is_meta = bool(_re.match(
+            r"^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|did\s+you\s+debug|is\s+it\s+fixed)",
+            prose,
+            _re.I,
         ))
+        looks_report = bool(_re.search(
+            r"error|exception|traceback|bug|fail|crash|کار\s*نمی|باگ|خطا|استثنا",
+            prose,
+            _re.I,
+        ))
+        if is_meta:
+            pass  # do not treat status chat as evidence
+        elif looks_report or len(prose) >= 40:
+            evidence.append(EvidenceItem(
+                id=_uid("ev"),
+                source="user",
+                message=ud[:2000],
+                reliability="possible" if looks_report else "weak",
+                kind="user_report",
+                confidence=0.5 if looks_report else 0.3,
+            ))
 
     # Code Engine analysis per file
     try:
@@ -238,12 +255,18 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
         # lightweight detection for short code without extension
         code = inp.source_code
         detected = None
-        if re.search(r"\bdef\s+\w+\s*\(|\bimport\s+\w+|\bprint\s*\(", code):
+        if re.search(r"\bdef\s+\w+\s*\(|\bimport\s+\w+|\bprint\s*\(|\bNone\b|\bself\.", code):
             detected = "python"
-        elif re.search(r"\bfunction\s+\w+|\bconst\s+\w+|\blet\s+\w+|console\.log", code):
+        elif re.search(r"\bfunction\s+\w+|\bconst\s+\w+|\blet\s+\w+|console\.log|=>\s*[{(]|\bundefined\b", code):
             detected = "javascript"
-        elif re.search(r"\bpublic\s+class\b|\bSystem\.out", code):
+        elif re.search(r"\bpublic\s+class\b|\bSystem\.out|\bstatic\s+void\s+main", code):
             detected = "java"
+        elif re.search(r"\bfn\s+\w+|\blet\s+mut\b|\bprintln!", code):
+            detected = "rust"
+        elif re.search(r"\bfunc\s+\w+|\bfmt\.|:=", code):
+            detected = "go"
+        elif re.search(r"\binterface\s+\w+|:\s*\w+\s*=|\bexport\s+(type|interface|const)", code):
+            detected = "typescript"
         if detected:
             inp.language = detected
             inp.files = [{"name": "snippet", "content": code, "language": detected}]
