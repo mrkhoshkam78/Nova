@@ -22,8 +22,8 @@ class AIConfig:
     api_key: str
     model: str
     base_url: str
-    temperature: float = 0.7
-    max_tokens: int = 2048
+    temperature: float = 0.4
+    max_tokens: int = 4096
 
     @classmethod
     def from_env(cls) -> "AIConfig":
@@ -43,12 +43,12 @@ class AIConfig:
         base_url = os.getenv("AI_BASE_URL", "https://api.openai.com/v1").strip()
 
         try:
-            temperature = float(os.getenv("AI_TEMPERATURE", "0.7"))
+            temperature = float(os.getenv("AI_TEMPERATURE", "0.4"))
         except ValueError:
             temperature = 0.7
 
         try:
-            max_tokens = int(os.getenv("AI_MAX_TOKENS", "2048"))
+            max_tokens = int(os.getenv("AI_MAX_TOKENS", "4096"))
         except ValueError:
             max_tokens = 2048
 

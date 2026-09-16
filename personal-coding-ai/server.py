@@ -1,5 +1,5 @@
 """
-Nova V2 – LLM Gateway (FastAPI)
+Nova V4.0.1 – LLM Gateway (FastAPI)
 Secure backend: API keys never leave the server.
 """
 
@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -21,7 +22,7 @@ from config import AIConfig
 
 load_dotenv()
 
-app = FastAPI(title="Nova LLM Gateway", version="3.0.0")
+app = FastAPI(title="Nova LLM Gateway", version="4.0.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,6 +52,8 @@ Rules:
 10. If you are unsure, say so clearly.
 
 You do not have filesystem, terminal, or network tools in this version unless explicitly provided in the message context.
+
+When a system message provides "Local Persian programming knowledge signals", treat fine/coarse intent and terms as hints to focus the answer (e.g. security, performance, debug, refactor). Prefer the user's language (often Persian for explanations, English for code identifiers).
 """
 
 MAX_HISTORY_MESSAGES = int(os.getenv("NOVA_MAX_HISTORY", "40"))
@@ -66,6 +69,11 @@ class ChatRequest(BaseModel):
     messages: List[Dict[str, str]]
     stream: bool = True
     files: Optional[List[FileContext]] = None
+    # Compact signals from client Knowledge layer (NOVA_FA_DB) — never the full dataset
+    intent: Optional[str] = None
+    fine_intent: Optional[str] = None
+    knowledge_hint: Optional[str] = None
+    terms: Optional[List[str]] = None
 
 
 class ChatResponse(BaseModel):
@@ -94,11 +102,34 @@ def _trim_history(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
 def _build_messages(req: ChatRequest) -> List[Dict[str, str]]:
     messages: List[Dict[str, str]] = [{"role": "system", "content": NOVA_SYSTEM_PROMPT}]
 
+    # Compact knowledge context from NOVA_FA_DB (client-side layer) — short, not a dump
+    know_parts: List[str] = []
+    if req.fine_intent or req.intent:
+        know_parts.append(
+            f"Detected coding intent: fine={req.fine_intent or '-'} | coarse={req.intent or '-'}"
+        )
+    if req.knowledge_hint:
+        know_parts.append(str(req.knowledge_hint)[:800])
+    if req.terms:
+        cleaned = [str(t)[:80] for t in req.terms[:12] if t]
+        if cleaned:
+            know_parts.append("Relevant terms: " + ", ".join(cleaned))
+    if know_parts:
+        messages.append({
+            "role": "system",
+            "content": (
+                "Local Persian programming knowledge signals (use to specialize the answer; "
+                "do not invent tools or file access):\n" + "\n".join(know_parts)
+            ),
+        })
+
     if req.files:
         parts = ["Project/file context provided by the user:"]
         for f in req.files[:10]:
             lang = f.language or ""
-            parts.append(f"\n--- file: {f.path} ---\n```{lang}\n{f.content}\n```")
+            # Cap per-file size already enforced by FileContext; still guard in join
+            content = (f.content or "")[:80_000]
+            parts.append(f"\n--- file: {f.path} ---\n```{lang}\n{content}\n```")
         messages.append({"role": "system", "content": "\n".join(parts)})
 
     for m in req.messages:
@@ -119,15 +150,19 @@ def health() -> Dict[str, Any]:
         learning_ok = True
     except Exception:  # noqa: BLE001
         pass
+    fa_db = Path(__file__).resolve().parent / "data" / "NOVA_FA_DB.json"
     return {
         "status": "ok",
         "service": "nova-gateway",
-        "version": "3.0.0",
+        "version": "4.0.1",
         "llm_configured": configured,
         "model": os.getenv("AI_MODEL", "gpt-4o-mini"),
         "code_engine": True,
         "debug_engine": True,
         "learning_brain": learning_ok,
+        "nova_fa_db": fa_db.is_file(),
+        "conversation_store": "client-localStorage",
+        "experience_db": "data/nova_memory.db",
     }
 
 
