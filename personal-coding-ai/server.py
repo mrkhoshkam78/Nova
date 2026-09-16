@@ -1,5 +1,5 @@
 """
-Nova V4.0.9 – LLM Gateway (FastAPI)
+Nova V4.1.0 – LLM Gateway (FastAPI)
 Secure backend: API keys never leave the server.
 """
 
@@ -22,7 +22,7 @@ from config import AIConfig
 
 load_dotenv()
 
-app = FastAPI(title="Nova LLM Gateway", version="4.0.9")
+app = FastAPI(title="Nova LLM Gateway", version="4.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -154,7 +154,7 @@ def health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "service": "nova-gateway",
-        "version": "4.0.9",
+        "version": "4.1.0",
         "llm_configured": configured,
         "model": os.getenv("AI_MODEL", "gpt-4o-mini"),
         "code_engine": True,
