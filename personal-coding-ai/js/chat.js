@@ -1015,26 +1015,15 @@ const Chat = window.Chat = (() => {
 
   /** True only when user is actually requesting code debugging with evidence */
   function isDebugRequest(text, conv, intentName) {
-    if (intentName !== "debug") return false;
-    const t = (text || "").trim();
-    if (!t) return false;
-    const hasFile = !!(conv && conv.files && conv.files.length);
-    const hasPrevCode = !!(conv && conv.messages && conv.messages.some((m) => /```[\s\S]{8,}```/.test(m.content || "")));
-    if (window.LangCtx) {
-      return LangCtx.looksLikeBugReport(t, { hasFile: hasFile, hasPrevCode: hasPrevCode });
+    if (intentName && intentName !== "debug") return false;
+    if (window.LangCtx && LangCtx.shouldRunDebugger) {
+      return LangCtx.shouldRunDebugger(text, conv);
     }
-    if (/^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|اوکی\s*شد|فهمیدی|متوجه\s*شدی|done\??|did\s+you\s+debug|is\s+it\s+fixed|worked\??)[\s!.؟،]*$/i.test(t)) {
-      return false;
+    if (window.LangCtx && LangCtx.looksLikeBugReport) {
+      const hasFile = !!(conv && conv.files && conv.files.length);
+      const hasPrevCode = !!(conv && conv.messages && conv.messages.some((m) => /```[\s\S]{8,}```/.test(m.content || "")));
+      return LangCtx.looksLikeBugReport(text, { hasFile, hasPrevCode });
     }
-    if (/دیباگ\s*کردی|آیا\s*دیباگ|did\s+you\s+debug|have\s+you\s+fixed/i.test(t) && t.length < 40) {
-      return false;
-    }
-    const hasFence = /```[\s\S]{8,}```/.test(t);
-    const hasStack = /traceback|stack\s*trace|TypeError|ValueError|NullPointer|at\s+\S+:\d+/i.test(t);
-    const hasErrorToken = /\b(error|exception|bug|crash|fail)\b|خطا|باگ|استثنا|کار\s*نمی\s*کنه/i.test(t);
-    if (hasFence || hasStack || hasFile) return true;
-    if (hasErrorToken && (hasPrevCode || t.length > 60)) return true;
-    if (/دیباگ\s*کن|debug\s*(this|it)|fix\s*this\s*bug|این\s*باگ/i.test(t) && (hasPrevCode || hasFile)) return true;
     return false;
   }
 
@@ -1176,19 +1165,21 @@ const Chat = window.Chat = (() => {
           reply = conversationalDebugReply(text, tc);
         } else if (intentNow.intent === "debug" && window.Debugger && isDebugRequest(text, tc, intentNow.intent)) {
           const lastFile = (tc.files && tc.files.length) ? tc.files[tc.files.length - 1] : null;
-          const codeFromMsg = (text.match(/```[\w]*\n([\s\S]*?)```/) || [])[1] || null;
+          const split = window.LangCtx && LangCtx.splitMessage ? LangCtx.splitMessage(text) : null;
+          const codeFromMsg = split && split.code ? split.code : ((text.match(/```[\w+-]*\n([\s\S]*?)```/) || [])[1] || null);
+          const prose = split && split.prose != null ? split.prose : text;
           const stackMatch = text.match(/((?:Traceback[\s\S]+)|(?:\s+at\s+.+:\d+[\s\S]*))/);
           const langFromFile = lastFile && lastFile.language ? lastFile.language : null;
-          const langFromFence = (text.match(/```(\w+)/) || [])[1] || null;
-          // Never treat pure chat text as errorMessage when no real error token
-          const looksLikeError = /traceback|error:|exception|TypeError|ValueError|خطا:|Error/i.test(text);
+          const langFromFence = (split && split.languages && split.languages[0]) || (text.match(/```([\w+-]+)/) || [])[1] || null;
+          const looksLikeError = !!(split && split.analysis && split.analysis.hasErrorLog) ||
+            /traceback|error:|exception|TypeError|ValueError|خطا:|Error:/i.test(text);
           const dbgInput = {
             sourceCode: codeFromMsg || (lastFile && lastFile.content) || null,
             language: langFromFence || langFromFile || null,
             files: tc.files || [],
-            errorMessage: looksLikeError ? text : (stackMatch ? stackMatch[0] : null),
+            errorMessage: looksLikeError ? (stackMatch ? stackMatch[0] : prose) : (stackMatch ? stackMatch[0] : null),
             stackTrace: stackMatch ? stackMatch[0] : null,
-            userDescription: text,
+            userDescription: prose || text,
             expectedBehavior: null,
             actualBehavior: null,
           };
@@ -1237,19 +1228,21 @@ const Chat = window.Chat = (() => {
           reply = conversationalDebugReply(text, tc);
         } else if (intentNow.intent === "debug" && window.Debugger && isDebugRequest(text, tc, intentNow.intent)) {
           const lastFile = (tc.files && tc.files.length) ? tc.files[tc.files.length - 1] : null;
-          const codeFromMsg = (text.match(/```[\w]*\n([\s\S]*?)```/) || [])[1] || null;
+          const split = window.LangCtx && LangCtx.splitMessage ? LangCtx.splitMessage(text) : null;
+          const codeFromMsg = split && split.code ? split.code : ((text.match(/```[\w+-]*\n([\s\S]*?)```/) || [])[1] || null);
+          const prose = split && split.prose != null ? split.prose : text;
           const stackMatch = text.match(/((?:Traceback[\s\S]+)|(?:\s+at\s+.+:\d+[\s\S]*))/);
           const langFromFile = lastFile && lastFile.language ? lastFile.language : null;
-          const langFromFence = (text.match(/```(\w+)/) || [])[1] || null;
-          // Never treat pure chat text as errorMessage when no real error token
-          const looksLikeError = /traceback|error:|exception|TypeError|ValueError|خطا:|Error/i.test(text);
+          const langFromFence = (split && split.languages && split.languages[0]) || (text.match(/```([\w+-]+)/) || [])[1] || null;
+          const looksLikeError = !!(split && split.analysis && split.analysis.hasErrorLog) ||
+            /traceback|error:|exception|TypeError|ValueError|خطا:|Error:/i.test(text);
           const dbgInput = {
             sourceCode: codeFromMsg || (lastFile && lastFile.content) || null,
             language: langFromFence || langFromFile || null,
             files: tc.files || [],
-            errorMessage: looksLikeError ? text : (stackMatch ? stackMatch[0] : null),
+            errorMessage: looksLikeError ? (stackMatch ? stackMatch[0] : prose) : (stackMatch ? stackMatch[0] : null),
             stackTrace: stackMatch ? stackMatch[0] : null,
-            userDescription: text,
+            userDescription: prose || text,
             expectedBehavior: null,
             actualBehavior: null,
           };

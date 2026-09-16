@@ -1,6 +1,6 @@
 /**
  * Intent Detection – Multi-signal scoring, context-aware (offline / client-side only)
- * Version 4.0.9 – Stronger Persian + English coverage, history-aware, confidence calibration
+ * Version 4.1.0 – Stronger Persian + English coverage, history-aware, confidence calibration
  */
 const Intent = window.Intent = (() => {
   // ── Code presence signals ──────────────────────────────────────────────
@@ -60,9 +60,18 @@ const Intent = window.Intent = (() => {
     const t = (text || "").trim();
     if (!t) return { intent: "empty", confidence: 1, reason: "empty input" };
 
-    // Meta status questions (not a debug request)
-    if (window.LangCtx && LangCtx.analyze(t).isMeta) {
-      return { intent: "general", confidence: 0.95, reason: "meta-status-question", fine: null, lang: LangCtx.analyze(t) };
+    const _lang = window.LangCtx ? LangCtx.analyze(t) : null;
+    if (_lang && (_lang.isMeta || (_lang.isPureChat && _lang.surface !== "code" && _lang.surface !== "mixed" && _lang.surface !== "error_log"))) {
+      // Pure conversation — never open as debug/review unless explicit coding intent words + code
+      if (!_lang.requestDebug && !_lang.hasCode && !_lang.hasErrorLog) {
+        if (GREETING.test(t) || (_lang.surface === "meta")) {
+          return { intent: GREETING.test(t) ? "greeting" : "general", confidence: 0.95, reason: "pure-chat/meta", fine: null, lang: _lang };
+        }
+        // still allow explain/generate keywords on pure chat below — but block debug defaults
+      }
+    }
+    if (_lang && _lang.isMeta) {
+      return { intent: "general", confidence: 0.95, reason: "meta-status-question", fine: null, lang: _lang };
     }
     if (/^(دیباگ\s*کردی|دیباگ\s*شد|درست\s*شد|اوکی\s*شد|فهمیدی|متوجه\s*شدی|did\s+you\s+debug|is\s+it\s+fixed|worked)[\s!.؟،]*$/i.test(t)) {
       return { intent: "general", confidence: 0.92, reason: "meta-status-question", fine: null };
@@ -71,11 +80,11 @@ const Intent = window.Intent = (() => {
     const msgs = (context && context.messages) || [];
     const files = (context && context.files) || [];
     const hasFile = files.length > 0;
-    const hasCodeNow = CODE_HINT.test(t) || CODE_BLOCK.test(t) || SHORT_CODE.test(t);
-    const hasCodeHist = hasCodeInHistory(msgs);
-    const langInfo = window.LangCtx ? LangCtx.analyze(t) : null;
-    // Prose without code fences — avoid treating FA chat words as code-debug
+    const langInfo = _lang || (window.LangCtx ? LangCtx.analyze(t) : null);
     const prose = langInfo ? langInfo.prose : t;
+    const hasCodeNow = (langInfo && langInfo.hasCode) || CODE_HINT.test(t) || CODE_BLOCK.test(t) || SHORT_CODE.test(t);
+    const hasCodeHist = hasCodeInHistory(msgs);
+    // Intent keyword tests run on prose for chat words; code detection uses full text / langInfo
     const hasCode = hasCodeNow || hasCodeHist;
     const prevIntent = lastUserIntent(msgs);
 
@@ -247,6 +256,24 @@ const Intent = window.Intent = (() => {
         scores["code-review"] += 0.28;
         reasons.push("anaphora → code review");
       }
+    }
+
+    // ── Pure-chat dampening: chat surface must not win as debug/review without evidence ──
+    if (langInfo && (langInfo.surface === "fa_chat" || langInfo.surface === "en_chat" || langInfo.surface === "meta")) {
+      if (!hasCodeNow && !hasFile && !hasCodeHist) {
+        scores.debug *= 0.25;
+        scores["code-review"] *= 0.35;
+        scores.refactor *= 0.4;
+        reasons.push("pure-chat dampen code intents");
+      }
+    }
+    if (langInfo && langInfo.surface === "code" && !langInfo.requestDebug) {
+      scores["code-review"] += 0.15;
+      reasons.push("code surface → review bias");
+    }
+    if (langInfo && langInfo.surface === "error_log") {
+      scores.debug += 0.45;
+      reasons.push("error_log surface");
     }
 
     // ── Knowledge dataset boost (offline terminology + labeled examples) ──

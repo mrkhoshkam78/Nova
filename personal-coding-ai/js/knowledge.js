@@ -1,12 +1,12 @@
 /**
- * knowledge.js – Nova V4.0.9 Local Knowledge Layer (offline, algorithm level ~12/20)
+ * knowledge.js – Nova V4.1.0 Local Knowledge Layer (offline, algorithm level ~12/20)
  *
  * Pipeline: normalize → signals → score → map → continuity
  * Uses NOVA_FA_DB.json only as a local dataset (never dumps full DB into prompts).
  */
 const Knowledge = window.Knowledge = (() => {
   const DATASET_URL = "data/NOVA_FA_DB.json";
-  const VERSION = "4.0.9";
+  const VERSION = "4.1.0";
 
   const FINE_TO_COARSE = {
     debug: "debug",
@@ -199,7 +199,23 @@ const Knowledge = window.Knowledge = (() => {
     const n = normalize(text);
     const raw = text || "";
 
-    // Meta-conversation: talking ABOUT debugging, not requesting a debug session
+    // Meta-conversation / pure chat: not a coding-intent session
+    if (window.LangCtx) {
+      const la = LangCtx.analyze(raw);
+      if (la.isMeta || (la.isPureChat && !la.hasCode && !la.hasErrorLog && !la.requestDebug)) {
+        return {
+          fine: null,
+          coarse: "general",
+          confidence: 0.92,
+          scores: { general: 0.92 },
+          terms: extractTerms(text),
+          reason: "langctx-pure-chat",
+          source: "guard",
+          version: VERSION,
+          lang: la,
+        };
+      }
+    }
     const META_CHAT = /^(دیباگ\s*کردی\s*\؟?|دیباگ\s*شد\؟?|درست\s*شد\؟?|اوکی\s*شد\؟?|فهمیدی\؟?|متوجه\s*شدی\؟?|done\؟?|did\s+you\s+debug|is\s+it\s+fixed|worked\؟?)[\s!.،]*$/i;
     if (META_CHAT.test(raw.trim()) || META_CHAT.test(n)) {
       return {
