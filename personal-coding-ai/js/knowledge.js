@@ -4,7 +4,7 @@
  * Used BEFORE Debug/Analysis engines — never dumped into system prompt.
  */
 const Knowledge = window.Knowledge = (() => {
-  const DATASET_URL = "data/nova_programming_dataset_v2.json";
+  const DATASET_URL = "data/NOVA_FA_DB.json";
 
   const FINE_TO_COARSE = {
     debug: "debug",
