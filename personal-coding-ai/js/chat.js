@@ -33,10 +33,33 @@ const Chat = window.Chat = (() => {
 
   function saveToStorageImmediate() {
     try {
-      const payload = { conversations: compactConversationsForStorage(), activeId };
+      let list = compactConversationsForStorage();
+      // Cap history size for quota safety (conversation DB is localStorage, not SQLite)
+      if (list.length > 40) list = list.slice(0, 40);
+      list = list.map((c) => {
+        const msgs = Array.isArray(c.messages) ? c.messages : [];
+        if (msgs.length > 120) {
+          return { ...c, messages: msgs.slice(-120) };
+        }
+        return c;
+      });
+      const payload = { conversations: list, activeId, version: "4.0.1" };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (_) {
-      // private mode / quota – ignore
+    } catch (err) {
+      // QuotaExceeded: drop oldest conversations and retry once
+      try {
+        const smaller = compactConversationsForStorage().slice(0, 15).map((c) => ({
+          ...c,
+          messages: (c.messages || []).slice(-40),
+          files: (c.files || []).slice(-1).map((f) => ({
+            ...f,
+            content: typeof f.content === "string" ? f.content.slice(0, 8000) : "",
+          })),
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ conversations: smaller, activeId, version: "4.0.1" }));
+      } catch (_) {
+        console.warn("[Nova] conversation storage full – oldest chats may not persist");
+      }
     }
   }
 
@@ -859,6 +882,29 @@ const Chat = window.Chat = (() => {
     const controller = new AbortController();
     activeAbort = controller;
 
+    const lastUserMsg = (conv.messages || []).filter((m) => m.role === "user").slice(-1)[0] || {};
+    const lastText = lastUserMsg.content || "";
+    const prevFine = (conv.messages || [])
+      .filter((m) => m.role === "user" && m.meta && m.meta.fine)
+      .slice(-2, -1)[0];
+    let intentPayload = null;
+    let fineIntent = (lastUserMsg.meta && lastUserMsg.meta.fine) || null;
+    let knowledgeHint = null;
+    let termList = [];
+    if (window.Intent) {
+      intentPayload = Intent.detect(lastText, { messages: conv.messages, files: conv.files || [] });
+    }
+    if (window.Knowledge && Knowledge.isReady()) {
+      const built = Knowledge.buildHint(lastText, {
+        prevFine: (prevFine && prevFine.meta && prevFine.meta.fine) || fineIntent,
+      });
+      if (built && built.match) {
+        if (built.match.fine) fineIntent = built.match.fine;
+        if (built.match.coarse && intentPayload) intentPayload.intent = built.match.coarse;
+        termList = (built.match.terms || []).map((t) => t.fa + (t.en ? "/" + t.en : ""));
+        knowledgeHint = built.hint || null;
+      }
+    }
     const body = {
       messages: historyForApi(conv),
       stream: true,
@@ -867,12 +913,10 @@ const Chat = window.Chat = (() => {
         content: (f.content || "").slice(0, 80000),
         language: f.language || "",
       })),
-      intent: (window.Intent
-        ? Intent.detect(
-            (conv.messages.filter((m) => m.role === "user").slice(-1)[0] || {}).content || "",
-            { messages: conv.messages, files: conv.files || [] }
-          )
-        : null),
+      intent: intentPayload && intentPayload.intent ? intentPayload.intent : (lastUserMsg.meta && lastUserMsg.meta.intent) || null,
+      fine_intent: fineIntent,
+      knowledge_hint: knowledgeHint,
+      terms: termList.slice(0, 12),
     };
 
     let response;
