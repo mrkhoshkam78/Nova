@@ -281,6 +281,11 @@ def run_debug(input_data: Dict[str, Any] | DebugInput) -> DebugSession:
     desc = (inp.user_description or "").strip()
     has_code = bool(inp.source_code) or bool(inp.files)
     has_err = bool(inp.error_message) or bool(inp.stack_trace)
+    # Unfenced density: treat as code if many symbols
+    if not has_code and inp.user_description:
+        _ud = inp.user_description
+        if _ud.count("{") + _ud.count(";") + _ud.count("=") >= 5 and len(_ud) > 60:
+            has_code = True  # unfenced code density
     chat_only = (
         not has_code
         and not has_err
