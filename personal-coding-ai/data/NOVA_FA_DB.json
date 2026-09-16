@@ -1,0 +1,5133 @@
+{
+  "dataset_name": "Nova Programming Persian Intent Dataset",
+  "version": "2.0.0",
+  "schema_version": "1.0",
+  "purpose": "Intent classification and programming-language understanding for Nova.",
+  "labels": [
+    "api",
+    "architecture",
+    "config",
+    "database",
+    "debug",
+    "explain",
+    "explain_code",
+    "explain_error",
+    "fix",
+    "git",
+    "network",
+    "performance",
+    "refactor",
+    "review",
+    "security",
+    "test",
+    "ui"
+  ],
+  "label_descriptions": {
+    "debug": "پیدا کردن علت و محل مشکل بدون الزام به تغییر.",
+    "review": "بازبینی کیفیت، ریسک و مشکلات احتمالی.",
+    "explain": "توضیح مفهومی کد یا خطا.",
+    "fix": "اصلاح مستقیم مشکل و ارائه تغییر کم‌ریسک",
+    "explain_code": "توضیح عملکرد و منطق کد",
+    "explain_error": "توضیح معنی و منشأ خطا",
+    "refactor": "بهبود ساختار با حفظ رفتار",
+    "security": "تحلیل ریسک‌ها و آسیب‌پذیری‌های امنیتی",
+    "performance": "تحلیل سرعت، حافظه و مصرف منابع",
+    "test": "طراحی یا تحلیل تست",
+    "architecture": "تحلیل معماری، مرزبندی و وابستگی‌ها",
+    "api": "تحلیل API و ارتباط client/server",
+    "database": "تحلیل database، query و persistence",
+    "ui": "تحلیل UI، DOM، CSS و responsive",
+    "git": "تحلیل Git، diff، branch و merge",
+    "config": "تحلیل config، dependency، build و deployment",
+    "network": "تحلیل timeout، retry و connection"
+  },
+  "normalization": {
+    "unicode": "ي→ی و ك→ک",
+    "whitespace": "collapse repeated spaces",
+    "recommended": "normalize before matching/classification"
+  },
+  "terminology": {
+    "باگ": {
+      "en": "bug",
+      "description": "اشکال یا رفتار ناخواسته در برنامه"
+    },
+    "خطا": {
+      "en": "error",
+      "description": "مشکلی که باعث شکست یا رفتار نادرست می‌شود"
+    },
+    "دیباگ": {
+      "en": "debug",
+      "description": "پیدا کردن و رفع علت خطا"
+    },
+    "اشکال‌زدایی": {
+      "en": "debugging",
+      "description": "فرآیند پیدا کردن و رفع خطا"
+    },
+    "خطای نحوی": {
+      "en": "syntax error",
+      "description": "خطا در ساختار و قواعد نوشتاری کد"
+    },
+    "خطای زمان اجرا": {
+      "en": "runtime error",
+      "description": "خطایی که هنگام اجرای برنامه رخ می‌دهد"
+    },
+    "خطای منطقی": {
+      "en": "logic error",
+      "description": "کد اجرا می‌شود اما نتیجه اشتباه است"
+    },
+    "تابع": {
+      "en": "function",
+      "description": "بخشی از کد برای انجام یک کار مشخص"
+    },
+    "پارامتر": {
+      "en": "parameter",
+      "description": "ورودی تعریف‌شده برای تابع"
+    },
+    "آرگومان": {
+      "en": "argument",
+      "description": "مقداری که هنگام فراخوانی تابع ارسال می‌شود"
+    },
+    "متغیر": {
+      "en": "variable",
+      "description": "نامی برای نگهداری یک مقدار"
+    },
+    "ثابت": {
+      "en": "constant",
+      "description": "مقداری که نباید تغییر کند"
+    },
+    "نوع داده": {
+      "en": "data type",
+      "description": "نوع مقدار مانند string یا number"
+    },
+    "رشته": {
+      "en": "string",
+      "description": "داده متنی"
+    },
+    "عدد صحیح": {
+      "en": "integer",
+      "description": "عدد بدون بخش اعشاری"
+    },
+    "عدد اعشاری": {
+      "en": "float",
+      "description": "عدد دارای بخش اعشاری"
+    },
+    "بولین": {
+      "en": "boolean",
+      "description": "مقدار true یا false"
+    },
+    "آرایه": {
+      "en": "array",
+      "description": "مجموعه‌ای مرتب از مقادیر"
+    },
+    "شیء": {
+      "en": "object",
+      "description": "ساختاری برای نگهداری داده و رفتار"
+    },
+    "کلاس": {
+      "en": "class",
+      "description": "الگوی ساخت اشیای مرتبط"
+    },
+    "نمونه": {
+      "en": "instance",
+      "description": "شیء ساخته‌شده از یک کلاس"
+    },
+    "وراثت": {
+      "en": "inheritance",
+      "description": "دریافت ویژگی‌ها و رفتار از کلاس دیگر"
+    },
+    "کپسوله‌سازی": {
+      "en": "encapsulation",
+      "description": "محدود کردن دسترسی مستقیم به جزئیات داخلی"
+    },
+    "چندریختی": {
+      "en": "polymorphism",
+      "description": "رفتار متفاوت یک رابط یا متد در انواع مختلف"
+    },
+    "رابط": {
+      "en": "interface",
+      "description": "قراردادی برای رفتار یا ساختار مورد انتظار"
+    },
+    "ماژول": {
+      "en": "module",
+      "description": "واحد قابل استفاده مجدد از کد"
+    },
+    "کتابخانه": {
+      "en": "library",
+      "description": "کدهای آماده برای استفاده در پروژه"
+    },
+    "فریم‌ورک": {
+      "en": "framework",
+      "description": "ساختار و ابزارهای پایه برای توسعه"
+    },
+    "وابستگی": {
+      "en": "dependency",
+      "description": "کدی که پروژه برای اجرا یا ساخت به آن نیاز دارد"
+    },
+    "مدیریت وابستگی": {
+      "en": "dependency management",
+      "description": "مدیریت پکیج‌ها و نسخه‌های موردنیاز"
+    },
+    "پکیج": {
+      "en": "package",
+      "description": "مجموعه‌ای از کدهای قابل نصب و استفاده"
+    },
+    "API": {
+      "en": "API",
+      "description": "رابط ارتباطی بین نرم‌افزارها"
+    },
+    "endpoint": {
+      "en": "endpoint",
+      "description": "نقطه دسترسی مشخص در یک API"
+    },
+    "درخواست": {
+      "en": "request",
+      "description": "پیامی که کلاینت برای سرور می‌فرستد"
+    },
+    "پاسخ": {
+      "en": "response",
+      "description": "داده‌ای که سرور در پاسخ برمی‌گرداند"
+    },
+    "HTTP": {
+      "en": "HTTP",
+      "description": "پروتکل رایج ارتباط وب"
+    },
+    "احراز هویت": {
+      "en": "authentication",
+      "description": "تشخیص هویت کاربر یا سرویس"
+    },
+    "مجوز دسترسی": {
+      "en": "authorization",
+      "description": "تعیین اینکه چه کاری مجاز است"
+    },
+    "توکن": {
+      "en": "token",
+      "description": "رشته‌ای برای شناسایی یا مجوز دسترسی"
+    },
+    "جلسه": {
+      "en": "session",
+      "description": "وضعیت تعامل کاربر با سرویس"
+    },
+    "کوکی": {
+      "en": "cookie",
+      "description": "داده کوچک ذخیره‌شده توسط مرورگر"
+    },
+    "کش": {
+      "en": "cache",
+      "description": "ذخیره موقت داده برای دسترسی سریع‌تر"
+    },
+    "دیتابیس": {
+      "en": "database",
+      "description": "سامانه ذخیره و مدیریت داده"
+    },
+    "جدول": {
+      "en": "table",
+      "description": "ساختار داده‌ای در دیتابیس رابطه‌ای"
+    },
+    "رکورد": {
+      "en": "record",
+      "description": "یک ورودی یا ردیف داده"
+    },
+    "کوئری": {
+      "en": "query",
+      "description": "درخواست برای خواندن یا تغییر داده"
+    },
+    "ایندکس": {
+      "en": "index",
+      "description": "ساختاری برای سریع‌تر شدن جست‌وجوی داده"
+    },
+    "مهاجرت دیتابیس": {
+      "en": "database migration",
+      "description": "تغییر کنترل‌شده ساختار دیتابیس"
+    },
+    "فرانت‌اند": {
+      "en": "frontend",
+      "description": "بخش قابل مشاهده و تعاملی برنامه"
+    },
+    "بک‌اند": {
+      "en": "backend",
+      "description": "بخش سمت سرور و منطق برنامه"
+    },
+    "کلاینت": {
+      "en": "client",
+      "description": "برنامه‌ای که به سرویس متصل می‌شود"
+    },
+    "سرور": {
+      "en": "server",
+      "description": "سیستمی که سرویس یا داده ارائه می‌کند"
+    },
+    "رندر": {
+      "en": "render",
+      "description": "تولید خروجی قابل نمایش از داده یا UI"
+    },
+    "کامپوننت": {
+      "en": "component",
+      "description": "واحد مستقل و قابل استفاده مجدد در رابط کاربری"
+    },
+    "رابط کاربری": {
+      "en": "UI",
+      "description": "بخش دیداری و تعاملی نرم‌افزار"
+    },
+    "تجربه کاربری": {
+      "en": "UX",
+      "description": "نحوه تجربه و تعامل کاربر با محصول"
+    },
+    "ریسپانسیو": {
+      "en": "responsive",
+      "description": "سازگاری رابط با اندازه‌های مختلف صفحه"
+    },
+    "استایل": {
+      "en": "style",
+      "description": "قواعد ظاهری عناصر"
+    },
+    "سلکتور": {
+      "en": "selector",
+      "description": "الگویی برای انتخاب عناصر در CSS"
+    },
+    "DOM": {
+      "en": "DOM",
+      "description": "ساختار درختی سند HTML"
+    },
+    "رویداد": {
+      "en": "event",
+      "description": "رخدادی مانند کلیک یا تایپ کاربر"
+    },
+    "هندلر": {
+      "en": "handler",
+      "description": "کدی که یک رویداد یا وضعیت را مدیریت می‌کند"
+    },
+    "وعده": {
+      "en": "promise",
+      "description": "نمایش‌دهنده نتیجه آینده یک عملیات async"
+    },
+    "ناهمگام": {
+      "en": "asynchronous",
+      "description": "اجرای عملیاتی بدون مسدود کردن جریان اصلی"
+    },
+    "همگام": {
+      "en": "synchronous",
+      "description": "اجرای مرحله‌به‌مرحله و منتظرماندن برای نتیجه"
+    },
+    "callback": {
+      "en": "callback",
+      "description": "تابعی که به کد دیگر داده می‌شود تا بعداً اجرا شود"
+    },
+    "پشته": {
+      "en": "stack",
+      "description": "ساختار داده یا ناحیه اجرای فراخوانی توابع"
+    },
+    "هیپ": {
+      "en": "heap",
+      "description": "ناحیه حافظه برای داده‌های پویا"
+    },
+    "نشت حافظه": {
+      "en": "memory leak",
+      "description": "مصرف حافظه‌ای که به‌درستی آزاد نمی‌شود"
+    },
+    "حلقه بی‌نهایت": {
+      "en": "infinite loop",
+      "description": "حلقه‌ای که شرط توقفش هیچ‌وقت برقرار نمی‌شود"
+    },
+    "شرط": {
+      "en": "condition",
+      "description": "منطقی برای انتخاب مسیر اجرا"
+    },
+    "حلقه": {
+      "en": "loop",
+      "description": "تکرار اجرای یک بخش از کد"
+    },
+    "بازگشت": {
+      "en": "recursion",
+      "description": "فراخوانی یک تابع توسط خودش"
+    },
+    "استثنا": {
+      "en": "exception",
+      "description": "رخداد غیرعادی در زمان اجرای برنامه"
+    },
+    "try/catch": {
+      "en": "try/catch",
+      "description": "ساختار رایج برای مدیریت برخی خطاها"
+    },
+    "لاگ": {
+      "en": "log",
+      "description": "اطلاعات ثبت‌شده برای بررسی رفتار برنامه"
+    },
+    "stack trace": {
+      "en": "stack trace",
+      "description": "زنجیره فراخوانی‌ها در زمان بروز خطا"
+    },
+    "breakpoint": {
+      "en": "breakpoint",
+      "description": "نقطه توقف اجرای برنامه برای بررسی وضعیت"
+    },
+    "پروفایلینگ": {
+      "en": "profiling",
+      "description": "اندازه‌گیری مصرف زمان و منابع برنامه"
+    },
+    "بهینه‌سازی": {
+      "en": "optimization",
+      "description": "بهبود کارایی یا مصرف منابع"
+    },
+    "پیچیدگی زمانی": {
+      "en": "time complexity",
+      "description": "نحوه رشد زمان اجرا نسبت به ورودی"
+    },
+    "پیچیدگی فضایی": {
+      "en": "space complexity",
+      "description": "نحوه رشد مصرف حافظه نسبت به ورودی"
+    },
+    "رفاکتور": {
+      "en": "refactor",
+      "description": "بهبود ساختار کد بدون تغییر رفتار مورد انتظار"
+    },
+    "بازنویسی": {
+      "en": "rewrite",
+      "description": "نوشتن دوباره بخشی از سیستم یا کد"
+    },
+    "کد تمیز": {
+      "en": "clean code",
+      "description": "کدی خوانا، قابل نگهداری و کم‌ابهام"
+    },
+    "خوانایی": {
+      "en": "readability",
+      "description": "میزان قابل فهم بودن کد"
+    },
+    "قابل نگهداری": {
+      "en": "maintainability",
+      "description": "میزان سهولت تغییر و نگهداری کد"
+    },
+    "کد تکراری": {
+      "en": "duplicate code",
+      "description": "بخش‌های تکرارشده در کد"
+    },
+    "بدهی فنی": {
+      "en": "technical debt",
+      "description": "هزینه آینده تصمیم‌های فنی کوتاه‌مدت"
+    },
+    "code smell": {
+      "en": "code smell",
+      "description": "نشانه‌ای از مشکل احتمالی در طراحی یا نگهداری کد"
+    },
+    "وابستگی زیاد": {
+      "en": "tight coupling",
+      "description": "وابستگی شدید اجزای نرم‌افزار به یکدیگر"
+    },
+    "وابستگی کم": {
+      "en": "loose coupling",
+      "description": "کاهش وابستگی مستقیم بین اجزا"
+    },
+    "اصل DRY": {
+      "en": "DRY",
+      "description": "پرهیز از تکرار غیرضروری منطق"
+    },
+    "اصل SOLID": {
+      "en": "SOLID",
+      "description": "مجموعه‌ای از اصول طراحی شی‌گرا"
+    },
+    "تست واحد": {
+      "en": "unit test",
+      "description": "آزمون یک واحد کوچک از کد"
+    },
+    "تست یکپارچه": {
+      "en": "integration test",
+      "description": "آزمون تعامل چند بخش سیستم"
+    },
+    "تست انتهابه‌انتها": {
+      "en": "end-to-end test",
+      "description": "آزمون یک جریان کامل کاربر"
+    },
+    "تست رگرسیون": {
+      "en": "regression test",
+      "description": "بررسی اینکه تغییر جدید مشکل قبلی ایجاد نکرده باشد"
+    },
+    "پوشش تست": {
+      "en": "test coverage",
+      "description": "میزان پوشش کد توسط تست‌ها"
+    },
+    "assertion": {
+      "en": "assertion",
+      "description": "بررسی برقرار بودن یک انتظار در تست"
+    },
+    "بازبینی کد": {
+      "en": "code review",
+      "description": "بررسی کد توسط فرد یا سیستم دیگر"
+    },
+    "pull request": {
+      "en": "pull request",
+      "description": "درخواست ادغام تغییرات کد"
+    },
+    "commit": {
+      "en": "commit",
+      "description": "ثبت یک مجموعه تغییر در سیستم کنترل نسخه"
+    },
+    "branch": {
+      "en": "branch",
+      "description": "شاخه مستقل توسعه در کنترل نسخه"
+    },
+    "merge": {
+      "en": "merge",
+      "description": "ادغام تغییرات دو شاخه"
+    },
+    "conflict": {
+      "en": "merge conflict",
+      "description": "تعارض تغییرات هنگام ادغام"
+    },
+    "کنترل نسخه": {
+      "en": "version control",
+      "description": "مدیریت تاریخچه تغییرات کد"
+    },
+    "انتشار": {
+      "en": "deployment",
+      "description": "قرار دادن نسخه برنامه در محیط اجرا"
+    },
+    "ساخت": {
+      "en": "build",
+      "description": "تبدیل و آماده‌سازی پروژه برای اجرا یا انتشار"
+    },
+    "CI/CD": {
+      "en": "CI/CD",
+      "description": "خودکارسازی ساخت، تست و انتشار"
+    },
+    "محیط توسعه": {
+      "en": "development environment",
+      "description": "محیط مورد استفاده برای توسعه"
+    },
+    "محیط تولید": {
+      "en": "production environment",
+      "description": "محیط واقعی کاربران"
+    },
+    "متغیر محیطی": {
+      "en": "environment variable",
+      "description": "تنظیماتی که از محیط اجرا خوانده می‌شود"
+    },
+    "کانفیگ": {
+      "en": "configuration",
+      "description": "تنظیمات قابل تغییر برنامه"
+    },
+    "امنیت": {
+      "en": "security",
+      "description": "محافظت از سیستم، داده و دسترسی‌ها"
+    },
+    "تزریق SQL": {
+      "en": "SQL injection",
+      "description": "سوءاستفاده از ورودی برای تغییر کوئری SQL"
+    },
+    "XSS": {
+      "en": "cross-site scripting",
+      "description": "اجرای اسکریپت ناخواسته در زمینه وب"
+    },
+    "CSRF": {
+      "en": "cross-site request forgery",
+      "description": "سوءاستفاده از نشست کاربر برای درخواست ناخواسته"
+    },
+    "اعتبارسنجی": {
+      "en": "validation",
+      "description": "بررسی درست‌بودن داده ورودی"
+    },
+    "پاک‌سازی ورودی": {
+      "en": "sanitization",
+      "description": "کاهش محتوای خطرناک یا نامعتبر ورودی"
+    },
+    "مرورگر": {
+      "en": "browser",
+      "description": "نرم‌افزار اجرای محتوای وب"
+    },
+    "کنسول": {
+      "en": "console",
+      "description": "محیط نمایش لاگ و خطاهای اجرایی"
+    },
+    "منبع": {
+      "en": "source",
+      "description": "کد یا فایل اصلی برنامه"
+    },
+    "وابستگی چرخشی": {
+      "en": "circular dependency",
+      "description": "وابستگی‌هایی که به شکل حلقه‌ای به هم برمی‌گردند"
+    },
+    "race condition": {
+      "en": "race condition",
+      "description": "نتیجه وابسته به ترتیب زمانی اجرای همزمان"
+    },
+    "deadlock": {
+      "en": "deadlock",
+      "description": "گیرکردن چند عملیات به دلیل انتظار متقابل"
+    },
+    "همزمانی": {
+      "en": "concurrency",
+      "description": "مدیریت چند کار در بازه زمانی مشترک"
+    },
+    "موازی‌سازی": {
+      "en": "parallelism",
+      "description": "اجرای واقعی چند کار به‌صورت همزمان"
+    },
+    "مقیاس‌پذیری": {
+      "en": "scalability",
+      "description": "توانایی سیستم برای تحمل رشد بار"
+    },
+    "latency": {
+      "en": "latency",
+      "description": "مدت زمان تأخیر تا دریافت پاسخ"
+    },
+    "throughput": {
+      "en": "throughput",
+      "description": "میزان کاری که سیستم در واحد زمان انجام می‌دهد"
+    },
+    "timeout": {
+      "en": "timeout",
+      "description": "پایان انتظار پس از گذشت زمان مشخص"
+    },
+    "retry": {
+      "en": "retry",
+      "description": "تلاش مجدد پس از شکست عملیات"
+    },
+    "fallback": {
+      "en": "fallback",
+      "description": "مسیر جایگزین هنگام شکست مسیر اصلی"
+    }
+  },
+  "aliases": {
+    "ارور": "خطا",
+    "error": "خطا",
+    "باگ": "باگ",
+    "bug": "باگ",
+    "دیباگ کردن": "دیباگ",
+    "اشکال زدایی": "دیباگ",
+    "اشکال‌زدایی": "دیباگ",
+    "کد ریویو": "بازبینی کد",
+    "ریویو": "بازبینی کد",
+    "رفکتور": "رفاکتور",
+    "دیتابیس": "دیتابیس",
+    "پایگاه داده": "دیتابیس",
+    "ای پی آی": "API",
+    "رابط برنامه نویسی": "API",
+    "رابط برنامه‌نویسی": "API"
+  },
+  "intents": [
+    {
+      "text": "آیا token امن نگهداری شده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این pull request را review کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "authentication این بخش را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این fetch را از نظر خطا بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این شرط ظاهراً درست است ولی وارد شاخه اشتباه می‌شود؛ بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این API از درخواست تا پاسخ چه مسیری دارد؟",
+      "label": "explain_code"
+    },
+    {
+      "text": "آیا این تغییر بهتر است در چند commit باشد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "آیا SQL injection ممکن است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "ورودی null و empty را هم تست کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "آیا این کد خوانا و قابل فهم است؟",
+      "label": "review"
+    },
+    {
+      "text": "این کد را از نظر performance بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "فرق syntax error و runtime error چیست؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "latency این درخواست از کجاست؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این باگ را برطرف کن؛ لطفاً دقیق بررسی کن.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا requestها گاهی موفق و گاهی ناموفق‌اند؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "آیا این query از نظر کارایی قابل بهبود است؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا این ورودی در برابر XSS امن است؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "security"
+    },
+    {
+      "text": "چرا این بخش کند است؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "فرق syntax error و logic error چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "آیا بهتر است این منطق به چند تابع کوچک‌تر تقسیم شود؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا token امن نگهداری شده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "چرا بعد از merge برنامه خراب شده؛ لطفاً دقیق بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "این commit چه مشکلی ایجاد کرده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "authorization این endpoint درست است؟",
+      "label": "security"
+    },
+    {
+      "text": "چرا sort روی اعداد نتیجه اشتباه می‌دهد؟",
+      "label": "debug"
+    },
+    {
+      "text": "این کد در development کار می‌کند ولی در production نه؛ علت را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "آیا memory leak داریم؟",
+      "label": "performance"
+    },
+    {
+      "text": "latency این درخواست از کجاست؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "network"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این event handler چگونه اجرا می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "آیا SQL injection ممکن است؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این دو فایل چگونه با هم کار می‌کنند؟",
+      "label": "explain_code"
+    },
+    {
+      "text": "بعد از refresh اطلاعاتم ناپدید می‌شود؛ کد ذخیره‌سازی را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این دو فایل چگونه با هم کار می‌کنند؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این بخش را از نظر regression risk review کن.",
+      "label": "review"
+    },
+    {
+      "text": "authentication این بخش را یه نگاه بنداز.",
+      "label": "security"
+    },
+    {
+      "text": "آیا secret داخل frontend قرار گرفته؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این exception کجا swallow می‌شود و چرا دیده نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "چرا API در frontend کار نمی‌کند؟",
+      "label": "api"
+    },
+    {
+      "text": "این merge conflict را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "تنظیمات deployment را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این configuration را بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "authorization این endpoint درست است؛ لطفاً دقیق بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "این syntax error را اصلاح کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "responsive بودن این بخش را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "آیا این ورودی در برابر XSS امن است؟",
+      "label": "security"
+    },
+    {
+      "text": "چرا بعد از merge برنامه خراب شده؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "آیا token امن نگهداری شده؛ لطفاً دقیق بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "این migration مشکل دارد؛ لطفاً دقیق بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "این فایل چه نقشی در پروژه دارد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این کد با اینترنت ضعیف چه مشکلی دارد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "network"
+    },
+    {
+      "text": "retry این کد درست است؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این error یعنی چه؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این merge conflict را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "چرا console.log مقدار مورد انتظار را نشان نمی‌دهد؟",
+      "label": "debug"
+    },
+    {
+      "text": "چرا این branch merge نمی‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "برای این باگ regression test بنویس؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "test"
+    },
+    {
+      "text": "XSS در این قسمت چگونه اتفاق می‌افتد؟",
+      "label": "explain"
+    },
+    {
+      "text": "آیا secret داخل frontend قرار گرفته؟",
+      "label": "security"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این کد را از نظر performance بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "این مشکل با ترتیب اجرای promiseها مرتبط است؟",
+      "label": "debug"
+    },
+    {
+      "text": "اتصال backend به database را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این loop را از نظر کارایی بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "کدهای تکراری را حذف کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ یه نگاه بنداز.",
+      "label": "api"
+    },
+    {
+      "text": "retry این کد درست است؟",
+      "label": "network"
+    },
+    {
+      "text": "فرق development و production چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "این کد را با رعایت DRY تمیز کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا environment variable مقدار ندارد؟",
+      "label": "config"
+    },
+    {
+      "text": "این کد در اولین اجرا درست است ولی بار دوم خراب می‌شود.",
+      "label": "debug"
+    },
+    {
+      "text": "برای این جریان end-to-end test پیشنهاد بده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "test"
+    },
+    {
+      "text": "authentication این بخش را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "security"
+    },
+    {
+      "text": "چرا تاریخ‌ها یک روز جابه‌جا نمایش داده می‌شوند؟",
+      "label": "debug"
+    },
+    {
+      "text": "این error یعنی چه؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا این درخواست timeout می‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "timeout و retry این درخواست را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این API را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "برای این باگ regression test بنویس؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "test"
+    },
+    {
+      "text": "مشکل ذخیره‌سازی را با کمترین تغییر اصلاح کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا environment variable مقدار ندارد؛ لطفاً دقیق بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "این stack trace را ساده توضیح بده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این فایل چه نقشی در پروژه دارد؟",
+      "label": "explain_code"
+    },
+    {
+      "text": "این implementation از نظر maintainability چطور است؟",
+      "label": "review"
+    },
+    {
+      "text": "build این پروژه دقیقاً چه کاری انجام می‌دهد؟",
+      "label": "explain"
+    },
+    {
+      "text": "اتصال backend به database را بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این تابع را ساده‌تر و خواناتر کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "آیا SQL injection ممکن است؟",
+      "label": "security"
+    },
+    {
+      "text": "این مشکل responsive را fix کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؟",
+      "label": "explain_code"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا درخواست‌ها دوبار ارسال می‌شوند؟",
+      "label": "debug"
+    },
+    {
+      "text": "چرا درخواست دوبار ارسال می‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "network"
+    },
+    {
+      "text": "frontend و backend درست جدا شده‌اند؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "latency این درخواست از کجاست؛ لطفاً دقیق بررسی کن.",
+      "label": "network"
+    },
+    {
+      "text": "این query را از نظر performance بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "این data flow را مرحله‌به‌مرحله توضیح بده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این helper function ارزش جدا شدن دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا token امن نگهداری شده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "security"
+    },
+    {
+      "text": "این دو فایل چگونه با هم کار می‌کنند؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "responsive بودن این بخش را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "تنظیمات deployment را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "برای این باگ regression test بنویس؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "چرا این مقدار عددی به string تبدیل شده؟",
+      "label": "debug"
+    },
+    {
+      "text": "خطای CORS چیست؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "از نظر scalability این طراحی را بررسی کن.",
+      "label": "review"
+    },
+    {
+      "text": "این query نتیجه ناقص می‌دهد؛ منطق query را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "چرا داده‌ها بعد از refresh برنمی‌گردند؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این API را بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "برای این تابع unit test بنویس؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این کد را از نظر امنیتی بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "این بخش با اصول SOLID سازگار است؟",
+      "label": "review"
+    },
+    {
+      "text": "کجاهای این کد duplicate شده و می‌شود بهترش کرد؟",
+      "label": "review"
+    },
+    {
+      "text": "مشکل ذخیره‌سازی را با کمترین تغییر اصلاح کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این کد با اینترنت کند چه رفتاری دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "status code این درخواست درست مدیریت شده؛ لطفاً دقیق بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "چرا connection قطع می‌شود؟",
+      "label": "network"
+    },
+    {
+      "text": "این دو فایل چگونه با هم کار می‌کنند؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "چرا dependency پیدا نمی‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "git"
+    },
+    {
+      "text": "این stack trace را به زبان ساده توضیح بده.",
+      "label": "explain"
+    },
+    {
+      "text": "چرا این element نمایش داده نمی‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "DOM در این بخش چه نقشی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "برای این API integration test طراحی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "edge caseهای این تابع را تست کن.",
+      "label": "test"
+    },
+    {
+      "text": "آیا memory leak داریم؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "چرا request به endpoint نمی‌رسد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "api"
+    },
+    {
+      "text": "این configuration را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "config"
+    },
+    {
+      "text": "این CSS چرا اعمال نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این کد را از نظر consistency با بقیه پروژه بررسی کن.",
+      "label": "review"
+    },
+    {
+      "text": "این فایل چه نقشی در پروژه دارد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این تابع را طوری اصلاح کن که خروجی درست بدهد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "authentication این بخش را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "چرا API در frontend کار نمی‌کند؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "برای این کد چه test caseهایی لازم است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "چرا این element نمایش داده نمی‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "آیا این کد احتمال race condition دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "چه assertionهایی برای این تابع مناسب است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این pull request را review کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "git"
+    },
+    {
+      "text": "چرا این branch merge نمی‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "آیا این تغییر بهتر است در چند commit باشد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "git"
+    },
+    {
+      "text": "چرا این element نمایش داده نمی‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "برای این باگ regression test بنویس؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "آیا DRY کردن این کد ارزش پیچیدگی بیشتر را دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "خطای CORS چیست؟",
+      "label": "explain_error"
+    },
+    {
+      "text": "fallback این request چرا اجرا نمی‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این کد را از نظر امنیتی بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این باگ را برطرف کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا z-index کار نمی‌کند؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این باگ را برطرف کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "ماژول‌بندی این پروژه منطقی است؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا بعد از merge برنامه خراب شده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "کد را از نظر memory usage review کن.",
+      "label": "review"
+    },
+    {
+      "text": "مشکل API را در کد برطرف کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا این event handler اجرا نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "برای این کد چه test caseهایی لازم است؛ لطفاً دقیق بررسی کن.",
+      "label": "test"
+    },
+    {
+      "text": "این تابع را ساده‌تر و خواناتر کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این pull request را review کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این promise هیچ‌وقت resolve نمی‌شود؛ مشکل async کجاست؟",
+      "label": "debug"
+    },
+    {
+      "text": "آیا این ورودی در برابر XSS امن است؛ لطفاً دقیق بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "این merge conflict را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "چرا connection قطع می‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "network"
+    },
+    {
+      "text": "این کد را از نظر performance بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این باگ را برطرف کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "fix"
+    },
+    {
+      "text": "معماری این پروژه را یه نگاه بنداز.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا circular dependency داریم؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "latency این درخواست از کجاست؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "آیا این ساختار برای توسعه‌دهنده جدید قابل فهم است؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا این branch merge نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "git"
+    },
+    {
+      "text": "این closure در این کد یعنی چه؟",
+      "label": "explain"
+    },
+    {
+      "text": "تنظیمات build مشکل دارد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "config"
+    },
+    {
+      "text": "در این کد احتمال division by zero وجود دارد؟",
+      "label": "debug"
+    },
+    {
+      "text": "آیا این تغییر بهتر است در چند commit باشد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "مشکل API را در کد برطرف کن؛ لطفاً دقیق بررسی کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این loop را از نظر کارایی بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "performance"
+    },
+    {
+      "text": "منطق این تابع را ساده توضیح بده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "خطای CORS چیست؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا requestها گاهی موفق و گاهی ناموفق‌اند؟",
+      "label": "network"
+    },
+    {
+      "text": "فرق bug و error چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "این exception چرا رخ داده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا این بخش کند است؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "performance"
+    },
+    {
+      "text": "این کد را بدون تغییر رفتار refactor کن؛ لطفاً دقیق بررسی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا z-index کار نمی‌کند؛ لطفاً دقیق بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "این status code چه معنایی دارد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این کد با اینترنت ضعیف چه مشکلی دارد؛ لطفاً دقیق بررسی کن.",
+      "label": "network"
+    },
+    {
+      "text": "این کلاس را با مسئولیت‌های مشخص‌تر بازطراحی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این data flow را مرحله‌به‌مرحله توضیح بده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "dependency بین این بخش‌ها را تحلیل کن؛ لطفاً دقیق بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا بعد از merge برنامه خراب شده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "git"
+    },
+    {
+      "text": "مشکل layout این صفحه چیست؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این خطا فقط با اینترنت ضعیف رخ می‌دهد؛ مدیریت retry را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این component چه زمانی render می‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این status code چه معنایی دارد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا این متغیر مقدارش بعد از اجرای تابع عوض می‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "چرا dependency پیدا نمی‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این implementation بیش از حد به جزئیات داخلی وابسته است؟",
+      "label": "review"
+    },
+    {
+      "text": "این fetch را از نظر خطا بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این query را از نظر performance بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این خطای undefined به چه معناست؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا requestها گاهی موفق و گاهی ناموفق‌اند؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا environment variable مقدار ندارد؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "چرا این درخواست timeout می‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "network"
+    },
+    {
+      "text": "چرا بعد از بستن modal هنوز event اجرا می‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "این component را به بخش‌های کوچک‌تر تقسیم کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا request به endpoint نمی‌رسد؛ لطفاً دقیق بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "این stack trace را با کدی که فرستادم تطبیق بده و ریشه خطا را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این خطای 500 از frontend است یا backend؟ از شواهد کد تفکیک کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این class inheritance واقعاً لازم است؟",
+      "label": "review"
+    },
+    {
+      "text": "کد اصلاح‌شده این مشکل را بده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "ماژول‌بندی این پروژه منطقی است؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "اگر فقط سه مورد را اصلاح کنیم، چه مواردی هستند؟",
+      "label": "review"
+    },
+    {
+      "text": "این fetch را از نظر خطا بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "api"
+    },
+    {
+      "text": "timeout و retry این درخواست را بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "تنظیمات build مشکل دارد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این کد با اینترنت ضعیف چه مشکلی دارد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا داده‌ها بعد از refresh برنمی‌گردند؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این abstraction چرا ایجاد شده؟",
+      "label": "explain"
+    },
+    {
+      "text": "معماری این پروژه را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا رکورد دوبار ذخیره می‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "dependency بین این بخش‌ها را تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "صفحه لود می‌شود ولی داده‌ها نمایش داده نمی‌شوند؛ مشکل را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "latency و throughput چه فرقی دارند؟",
+      "label": "explain"
+    },
+    {
+      "text": "retry این کد درست است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این فایل را برای نگهداری بلندمدت refactor کن؛ لطفاً دقیق بررسی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این migration مشکل دارد؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این environment variable چرا استفاده شده؟",
+      "label": "explain"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را یه نگاه بنداز.",
+      "label": "architecture"
+    },
+    {
+      "text": "این interface چه قراردادی تعریف می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "این تابع را از نظر edge caseهای مهم review کن.",
+      "label": "review"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "چرا هنگام merge این بخش از برنامه خراب شده؟",
+      "label": "debug"
+    },
+    {
+      "text": "این error یعنی چه؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این fetch را از نظر خطا یه نگاه بنداز.",
+      "label": "api"
+    },
+    {
+      "text": "این component چه زمانی render می‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این ساختار برای رشد پروژه مناسب است؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این CSS چرا اعمال نمی‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "401 و 403 چه تفاوتی دارند؟",
+      "label": "explain_error"
+    },
+    {
+      "text": "آیا کامنت‌های این کد واقعاً مفیدند؟",
+      "label": "review"
+    },
+    {
+      "text": "برای این تابع unit test بنویس؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "فرق refactor و rewrite چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا requestها گاهی موفق و گاهی ناموفق‌اند؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این package version باعث خطا شده؛ لطفاً دقیق بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "این migration مشکل دارد؟",
+      "label": "database"
+    },
+    {
+      "text": "این کلاس مسئولیت‌های زیادی دارد یا نه؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا تابع callback اصلاً فراخوانی نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "آیا test coverage این قسمت کافی به نظر می‌رسد؟",
+      "label": "review"
+    },
+    {
+      "text": "این کد را با رعایت DRY تمیز کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا فایل آپلود می‌شود ولی backend آن را دریافت نمی‌کند؟",
+      "label": "debug"
+    },
+    {
+      "text": "چرا این بخش کند است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "چرا داده‌ها بعد از refresh برنمی‌گردند؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "database"
+    },
+    {
+      "text": "این assertion چه چیزی را بررسی می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "edge caseهای این تابع را تست کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این کلاس را با مسئولیت‌های مشخص‌تر بازطراحی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "لطفاً dependency chain این خطا را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این کد روی داده خالی crash می‌کند؛ null و empty case را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "فرق syntax error و runtime error چیست؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این exception چرا رخ داده؟",
+      "label": "explain_error"
+    },
+    {
+      "text": "این loop را از نظر کارایی بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "لطفاً وابستگی‌های این فایل را بررسی کن؛ احتمالاً یک dependency مشکل دارد.",
+      "label": "debug"
+    },
+    {
+      "text": "آیا اینجا caching منطقی است یا فقط پیچیدگی اضافه می‌کند؟",
+      "label": "review"
+    },
+    {
+      "text": "این خطای runtime را fix کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "fix"
+    },
+    {
+      "text": "برای این باگ regression test بنویس؛ لطفاً دقیق بررسی کن.",
+      "label": "test"
+    },
+    {
+      "text": "این code smell دقیقاً چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "این کد را بدون تغییر رفتار refactor کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "آیا SQL injection ممکن است؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "فرق این دو تابع چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "خطای CORS چیست؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "آیا این ورودی در برابر XSS امن است؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "security"
+    },
+    {
+      "text": "برای این جریان end-to-end test پیشنهاد بده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "چه assertionهایی برای این تابع مناسب است؛ لطفاً دقیق بررسی کن.",
+      "label": "test"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ یه نگاه بنداز.",
+      "label": "database"
+    },
+    {
+      "text": "چرا API در frontend کار نمی‌کند؛ لطفاً دقیق بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "status code این درخواست درست مدیریت شده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این کد را با رعایت DRY تمیز کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این fetch را از نظر خطا یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "آیا مدیریت promiseها تمیز و قابل پیش‌بینی است؟",
+      "label": "review"
+    },
+    {
+      "text": "این commit چه مشکلی ایجاد کرده؛ لطفاً دقیق بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "فرق syntax error و runtime error چیست؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "برای این کد چه test caseهایی لازم است؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "test"
+    },
+    {
+      "text": "چرا index باعث نتیجه اشتباه می‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "چرا این درخواست timeout می‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "network"
+    },
+    {
+      "text": "این خطای runtime را fix کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این ساختار برای رشد پروژه مناسب است؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا می‌توان coupling را کمتر کرد؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا بعد از حذف آیتم، UI هنوز آیتم را نشان می‌دهد؟",
+      "label": "debug"
+    },
+    {
+      "text": "این کلاس را با مسئولیت‌های مشخص‌تر بازطراحی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این migration مشکل دارد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "آیا بهتر است این تغییر را جداگانه deploy کنیم؟",
+      "label": "review"
+    },
+    {
+      "text": "این fetch را از نظر خطا بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "api"
+    },
+    {
+      "text": "ورودی null و empty را هم تست کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این ساختار برای رشد پروژه مناسب است؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "coupling این بخش را کمتر کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "index مناسب این query چیست؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "چرا این درخواست timeout می‌شود؟",
+      "label": "network"
+    },
+    {
+      "text": "چرا requestها گاهی موفق و گاهی ناموفق‌اند؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "network"
+    },
+    {
+      "text": "چرا recursion در این تابع متوقف نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "این API را یه نگاه بنداز.",
+      "label": "api"
+    },
+    {
+      "text": "این component را به بخش‌های کوچک‌تر تقسیم کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "آیا circular dependency داریم؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا این branch merge نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "آیا timeout مناسب انتخاب شده؟",
+      "label": "review"
+    },
+    {
+      "text": "اتصال backend به database را یه نگاه بنداز.",
+      "label": "database"
+    },
+    {
+      "text": "این کد باعث افزایش مصرف CPU شده؛ بخش مشکل‌دار را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این merge conflict را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "تنظیمات deployment را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این data flow را مرحله‌به‌مرحله توضیح بده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این تابع بیش از حد پیچیده شده؟ بررسی‌اش کن.",
+      "label": "review"
+    },
+    {
+      "text": "این loop را از نظر complexity بررسی کن.",
+      "label": "review"
+    },
+    {
+      "text": "status code این درخواست درست مدیریت شده؟",
+      "label": "api"
+    },
+    {
+      "text": "این data flow را مرحله‌به‌مرحله توضیح بده؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "retry این کد درست است؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این query در برابر SQL injection چطور محافظت شده؟",
+      "label": "review"
+    },
+    {
+      "text": "ورودی null و empty را هم تست کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این تابع را طوری اصلاح کن که خروجی درست بدهد.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا داده از backend می‌آید ولی UI آپدیت نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "401 و 403 چه تفاوتی دارند؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا این branch merge نمی‌شود؟",
+      "label": "git"
+    },
+    {
+      "text": "آیا logging بیش از حد یا کم است؟",
+      "label": "review"
+    },
+    {
+      "text": "این merge conflict را بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "retry این کد درست است؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا requestها گاهی موفق و گاهی ناموفق‌اند؛ لطفاً دقیق بررسی کن.",
+      "label": "network"
+    },
+    {
+      "text": "آیا این refactor باعث regression می‌شود؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا این ورودی در برابر XSS امن است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این کد را بدون تغییر رفتار refactor کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این data flow را مرحله‌به‌مرحله توضیح بده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "responsive بودن این بخش را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "برای این API integration test طراحی کن.",
+      "label": "test"
+    },
+    {
+      "text": "dependency بین این بخش‌ها را تحلیل کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "status code این درخواست درست مدیریت شده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "api"
+    },
+    {
+      "text": "برای این API integration test طراحی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این pull request را review کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این status code چه معنایی دارد؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این importها و dependencyها را review کن.",
+      "label": "review"
+    },
+    {
+      "text": "این query را از نظر performance بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این pull request را review کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این component چه زمانی render می‌شود؟",
+      "label": "explain_code"
+    },
+    {
+      "text": "این component را به بخش‌های کوچک‌تر تقسیم کن؛ لطفاً دقیق بررسی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این کد را با رعایت DRY تمیز کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "آیا circular dependency داریم؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "authentication این بخش را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "چرا درخواست API قبل از آماده‌شدن token ارسال می‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "این کد را با رعایت DRY تمیز کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؟",
+      "label": "explain_code"
+    },
+    {
+      "text": "این package version باعث خطا شده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این exception از کجا می‌آید؟",
+      "label": "explain"
+    },
+    {
+      "text": "لطفاً خط‌به‌خط بررسی کن ببین چرا این تابع مقدار درست برنمی‌گرداند.",
+      "label": "debug"
+    },
+    {
+      "text": "چرا connection قطع می‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این فایل چه نقشی در پروژه دارد؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این loop چند بار اجرا می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این syntax error را اصلاح کن.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا بعد از merge برنامه خراب شده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "git"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته یه نگاه بنداز.",
+      "label": "git"
+    },
+    {
+      "text": "dependency بین این بخش‌ها را تحلیل کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این فایل را برای نگهداری بلندمدت refactor کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "edge caseهای این تابع را تست کن؛ لطفاً دقیق بررسی کن.",
+      "label": "test"
+    },
+    {
+      "text": "frontend و backend درست جدا شده‌اند؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این تابع را طوری اصلاح کن که خروجی درست بدهد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "خطای CORS چیست؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا در production کار می‌کند ولی development نه؛ لطفاً دقیق بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "این migration مشکل دارد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این event چند بار ثبت شده؟ بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "چرا status code مناسب مدیریت نشده؟",
+      "label": "debug"
+    },
+    {
+      "text": "چرا connection قطع می‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این loop را از نظر کارایی بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این کد را بدون تغییر رفتار refactor کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "encapsulation در این کد کجاست؟",
+      "label": "explain"
+    },
+    {
+      "text": "آیا abstraction اینجا واقعاً لازم است؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا CSS اعمال نمی‌شود؟ مسیر فایل و selector را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "فرق library و framework چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "تنظیمات deployment را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "چه assertionهایی برای این تابع مناسب است؟",
+      "label": "test"
+    },
+    {
+      "text": "این تغییر چه قسمت‌هایی را ممکن است بشکند؟",
+      "label": "review"
+    },
+    {
+      "text": "این endpoint در فرانت‌اند 404 می‌دهد؛ مسیر را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "آیا composition اینجا بهتر از inheritance است؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا مقدار آرایه بعد از این عملیات تغییر غیرمنتظره دارد؟",
+      "label": "debug"
+    },
+    {
+      "text": "آیا secret داخل frontend قرار گرفته؛ لطفاً دقیق بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "این pull request از نظر معماری چه ایرادهایی دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "database"
+    },
+    {
+      "text": "چرا environment variable مقدار ندارد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "config"
+    },
+    {
+      "text": "cookie در این برنامه چه کاربردی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این فایل را برای نگهداری بلندمدت refactor کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "ماژول‌بندی این پروژه منطقی است؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "مشکل ذخیره‌سازی را با کمترین تغییر اصلاح کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "برای این کد چه test caseهایی لازم است؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این package version باعث خطا شده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این کد با اینترنت ضعیف چه مشکلی دارد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "ورودی null و empty را هم تست کن؛ لطفاً دقیق بررسی کن.",
+      "label": "test"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این کد را از نظر امنیتی بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "آیا اطلاعات حساس در frontend قرار گرفته؟",
+      "label": "review"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "frontend و backend درست جدا شده‌اند؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "این فایل را برای نگهداری بلندمدت refactor کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این کلاس را با مسئولیت‌های مشخص‌تر بازطراحی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این تابع را طوری اصلاح کن که خروجی درست بدهد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "برای این جریان end-to-end test پیشنهاد بده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "ماژول‌بندی این پروژه منطقی است؛ لطفاً دقیق بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "این کد را با رعایت DRY تمیز کن؛ لطفاً دقیق بررسی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا این element نمایش داده نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این فایل چه نقشی در پروژه دارد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "مشکل ذخیره‌سازی را با کمترین تغییر اصلاح کن؛ لطفاً دقیق بررسی کن.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا این درخواست timeout می‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "رابطه این class با این object چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "آیا این ورودی در برابر XSS امن است؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "چرا این درخواست timeout می‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "آیا global state در این بخش خطرناک است؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا request به endpoint نمی‌رسد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این API را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "چرا رکورد دوبار ذخیره می‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "database"
+    },
+    {
+      "text": "منطق این تابع را ساده توضیح بده.",
+      "label": "explain_code"
+    },
+    {
+      "text": "چرا dependency پیدا نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "تنظیمات deployment را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "چه بخش‌هایی بهتر است unit test داشته باشند؟",
+      "label": "review"
+    },
+    {
+      "text": "این component چه زمانی render می‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "آیا این تغییر بهتر است در چند commit باشد؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "لطفاً root cause این باگ را مشخص کن، نه فقط راه‌حل موقت.",
+      "label": "debug"
+    },
+    {
+      "text": "آیا این تغییر بهتر است در چند commit باشد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "git"
+    },
+    {
+      "text": "مشکل layout این صفحه چیست؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "ui"
+    },
+    {
+      "text": "چرا این CSS روی element اثر می‌گذارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "bottleneck کد کجاست؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "چه assertionهایی برای این تابع مناسب است؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "در کنسول خطا می‌گیرم، بگو دقیقاً کدام بخش باعث آن شده.",
+      "label": "debug"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "inheritance در این class چه اثری دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "latency این درخواست از کجاست؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا z-index کار نمی‌کند؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "ui"
+    },
+    {
+      "text": "فرق syntax error و runtime error چیست؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "مشکل layout این صفحه چیست؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این commit چه مشکلی ایجاد کرده؟",
+      "label": "git"
+    },
+    {
+      "text": "bottleneck کد کجاست؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "تنظیمات build مشکل دارد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "status code این درخواست درست مدیریت شده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این worker گاهی متوقف می‌شود؛ پیام‌رسانی بین worker و صفحه را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این خطا بعد از آخرین تغییر ایجاد شده؛ علت احتمالی را در کد پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این query را از نظر performance بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "چرا رکورد دوبار ذخیره می‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این syntax error را اصلاح کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "coupling این بخش را کمتر کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این API از درخواست تا پاسخ چه مسیری دارد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "مشکل API را در کد برطرف کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "frontend و backend درست جدا شده‌اند؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا این بخش کند است؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این stack trace را ساده توضیح بده؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "منطق این تابع را ساده توضیح بده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "refactor یعنی چه و چه زمانی انجامش می‌دهیم؟",
+      "label": "explain"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این configuration را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "کد را اجرا کردم و memory مصرف می‌کند؛ دنبال memory leak بگرد.",
+      "label": "debug"
+    },
+    {
+      "text": "این state از کجا می‌آید و کجا مصرف می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "این component چه زمانی render می‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "timeout و retry این درخواست را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "آیا مسئولیت‌های این component باید جدا شوند؟",
+      "label": "review"
+    },
+    {
+      "text": "معماری این پروژه را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا این تغییر بهتر است در چند commit باشد؛ لطفاً دقیق بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "این ساختار برای رشد پروژه مناسب است؛ لطفاً دقیق بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "منطق این تابع را ساده توضیح بده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "آیا ساختار این فایل برای نگهداری بلندمدت مناسب است؟",
+      "label": "review"
+    },
+    {
+      "text": "status code این درخواست درست مدیریت شده؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "authorization این endpoint درست است؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "deadlock چیست و چگونه اتفاق می‌افتد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این commit چه مشکلی ایجاد کرده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این دو فایل چگونه با هم کار می‌کنند؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "index مناسب این query چیست؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "database"
+    },
+    {
+      "text": "آیا side effectهای این تابع مشخص و کنترل‌شده‌اند؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا این کد بیش از حد abstraction دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا secret داخل frontend قرار گرفته؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "security"
+    },
+    {
+      "text": "cache چه زمانی مفید است؟",
+      "label": "explain"
+    },
+    {
+      "text": "آیا memory leak داریم؛ لطفاً دقیق بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "status code این درخواست درست مدیریت شده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "regression test چرا مهم است؟",
+      "label": "explain"
+    },
+    {
+      "text": "ورودی null و empty را هم تست کن.",
+      "label": "test"
+    },
+    {
+      "text": "کد اصلاح‌شده این مشکل را بده؛ لطفاً دقیق بررسی کن.",
+      "label": "fix"
+    },
+    {
+      "text": "کد اصلاح‌شده این مشکل را بده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این exception چرا رخ داده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "این data flow را مرحله‌به‌مرحله توضیح بده؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این endpoint از نظر authorization درست طراحی شده؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا این بخش کند است؟",
+      "label": "performance"
+    },
+    {
+      "text": "این stack trace را ساده توضیح بده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چه edge caseهایی برای تست جا افتاده‌اند؟",
+      "label": "review"
+    },
+    {
+      "text": "space complexity این الگوریتم چقدر است؟",
+      "label": "explain"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ یه نگاه بنداز.",
+      "label": "ui"
+    },
+    {
+      "text": "کدام بخش‌ها بیشترین بدهی فنی را دارند؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا CPU مصرف این برنامه زیاد شده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "تنظیمات deployment را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این API از درخواست تا پاسخ چه مسیری دارد؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این component چه زمانی render می‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این pull request را review کن؛ لطفاً دقیق بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "چرا مقدار برگشتی این تابع با چیزی که انتظار دارم فرق دارد؟",
+      "label": "debug"
+    },
+    {
+      "text": "این کد را از نظر performance بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "آیا لاگ‌های این بخش برای debugging کافی هستند؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا environment variable مقدار ندارد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "config"
+    },
+    {
+      "text": "چرا بعد از merge برنامه خراب شده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این کد برای production آماده است؟",
+      "label": "review"
+    },
+    {
+      "text": "این کد را بدون تغییر رفتار refactor کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "responsive بودن این بخش را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این تابع را ساده‌تر و خواناتر کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این component را به بخش‌های کوچک‌تر تقسیم کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "git"
+    },
+    {
+      "text": "چرا z-index کار نمی‌کند؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "چرا درخواست دوبار ارسال می‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "network"
+    },
+    {
+      "text": "این loop را از نظر کارایی بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "timeout و retry این درخواست را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "retry این درخواست ممکن است مشکل ایجاد کند؟",
+      "label": "review"
+    },
+    {
+      "text": "این CSS از نظر نگهداری و تداخل selectorها مشکلی دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "این merge conflict را یه نگاه بنداز.",
+      "label": "git"
+    },
+    {
+      "text": "timeout و retry این درخواست را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "آیا circular dependency داریم؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا بعد از merge برنامه خراب شده؟",
+      "label": "git"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "چرا environment variable مقدار ندارد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "چرا request به endpoint نمی‌رسد؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این naming convention یکدست است؟",
+      "label": "review"
+    },
+    {
+      "text": "این configuration را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این کد را از نظر performance یه نگاه بنداز.",
+      "label": "performance"
+    },
+    {
+      "text": "کد اصلاح‌شده این مشکل را بده.",
+      "label": "fix"
+    },
+    {
+      "text": "این کد از نظر تست‌پذیری چطور است؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا در production کار می‌کند ولی development نه؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "config"
+    },
+    {
+      "text": "این selector دقیقاً کدام elementها را انتخاب می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "برای این جریان end-to-end test پیشنهاد بده؛ لطفاً دقیق بررسی کن.",
+      "label": "test"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "چرا در production کار می‌کند ولی development نه؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "status code این درخواست درست مدیریت شده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این کد را از نظر امنیتی بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "security"
+    },
+    {
+      "text": "این promise دقیقاً چه زمانی resolve می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا در production کار می‌کند ولی development نه؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این exception چرا رخ داده؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این کد را بدون تغییر رفتار refactor کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "وقتی روی دکمه کلیک می‌کنم هیچ اتفاقی نمی‌افتد؛ باگ را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این کد را از نظر امنیتی بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "این error یعنی چه؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این component بیش از حد بزرگ شده؟",
+      "label": "review"
+    },
+    {
+      "text": "این syntax error را اصلاح کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "dependency بین این بخش‌ها را تحلیل کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "مشکل ذخیره‌سازی را با کمترین تغییر اصلاح کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا درخواست دوبار ارسال می‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا در production کار می‌کند ولی development نه؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "مشکل را فقط از روی همین فایل پیدا کن و حدس بی‌دلیل نزن.",
+      "label": "debug"
+    },
+    {
+      "text": "برای این API integration test طراحی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "bottleneck کد کجاست؟",
+      "label": "performance"
+    },
+    {
+      "text": "این کلاس را با مسئولیت‌های مشخص‌تر بازطراحی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این stack trace را ساده توضیح بده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "مشکل API را در کد برطرف کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "آیا interface این ماژول مناسب طراحی شده؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا error handling این بخش کافی است؟",
+      "label": "review"
+    },
+    {
+      "text": "این syntax error را اصلاح کن؛ لطفاً دقیق بررسی کن.",
+      "label": "fix"
+    },
+    {
+      "text": "مشکل API را در کد برطرف کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این loop را از نظر کارایی یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "چرا requestها گاهی موفق و گاهی ناموفق‌اند؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "تنظیمات deployment را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "config"
+    },
+    {
+      "text": "برای این باگ regression test بنویس؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "برای این API integration test طراحی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "test"
+    },
+    {
+      "text": "این fetch را از نظر خطا بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "آیا قبل از merge تست کافی داریم؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا این element نمایش داده نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این خطای undefined به چه معناست؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این کد را از نظر امنیتی بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این loop را از نظر کارایی بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "کدام کامنت‌ها قدیمی یا گمراه‌کننده‌اند؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا environment variable مقدار ندارد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "اگر این خط اجرا نشود، چه اتفاقی می‌افتد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این تابع روی بعضی ورودی‌ها crash می‌کند؛ edge case را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "فرق concurrency و parallelism چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "لطفاً قبل از پیشنهاد تغییر، علت اصلی خطا را مشخص کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این migration مشکل دارد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "commit با push چه فرقی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این status code چه معنایی دارد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این conflict را بررسی کن و بگو کدام منطق باید حفظ شود.",
+      "label": "debug"
+    },
+    {
+      "text": "این pull request را review کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "تنظیمات build مشکل دارد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "coupling این بخش را کمتر کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "ui"
+    },
+    {
+      "text": "این کلاس را با مسئولیت‌های مشخص‌تر بازطراحی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "آیا این تغییر بهتر است در چند commit باشد؟",
+      "label": "git"
+    },
+    {
+      "text": "این error یعنی چه؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "کدهای تکراری را حذف کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "آیا این dependency واقعاً در این فایل لازم است؟",
+      "label": "review"
+    },
+    {
+      "text": "این خطای undefined به چه معناست؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا CPU مصرف این برنامه زیاد شده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "برای این تابع unit test بنویس؛ لطفاً دقیق بررسی کن.",
+      "label": "test"
+    },
+    {
+      "text": "این تابع را طوری اصلاح کن که خروجی درست بدهد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "fix"
+    },
+    {
+      "text": "responsive بودن این بخش را بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "برای این تابع unit test بنویس.",
+      "label": "test"
+    },
+    {
+      "text": "این مشکل مربوط به syntax است یا logic؟ با دلیل مشخص کن.",
+      "label": "debug"
+    },
+    {
+      "text": "آیا token handling در این کد امن است؟",
+      "label": "review"
+    },
+    {
+      "text": "این dependency chain را ساده توضیح بده.",
+      "label": "explain"
+    },
+    {
+      "text": "retry این کد درست است؛ لطفاً دقیق بررسی کن.",
+      "label": "network"
+    },
+    {
+      "text": "timeout دقیقاً چه زمانی رخ می‌دهد؟",
+      "label": "explain"
+    },
+    {
+      "text": "authentication این بخش را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "index مناسب این query چیست؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "database"
+    },
+    {
+      "text": "چرا رکورد دوبار ذخیره می‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "debugging دقیقاً چه مراحلی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "معماری این پروژه را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "try/catch اینجا چه چیزی را کنترل می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا یک import در مرورگر پیدا نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "ماژول‌بندی این پروژه منطقی است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا circular dependency داریم؛ لطفاً دقیق بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "کد اصلاح‌شده این مشکل را بده؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این recursion چگونه متوقف می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "این خطای undefined را پیدا کن و بگو کدام مقدار زودتر از موعد استفاده شده.",
+      "label": "debug"
+    },
+    {
+      "text": "کد اصلاح‌شده این مشکل را بده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "fix"
+    },
+    {
+      "text": "fallback این request چرا اجرا نمی‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "bottleneck کد کجاست؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "performance"
+    },
+    {
+      "text": "برای این کد چه test caseهایی لازم است؟",
+      "label": "test"
+    },
+    {
+      "text": "این stack trace را ساده توضیح بده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این خطا فقط موقع اجرا ظاهر می‌شود، علتش را از روی کد پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "آیا memory leak داریم؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "چرا z-index اینجا اثر ندارد؟",
+      "label": "debug"
+    },
+    {
+      "text": "authorization این endpoint درست است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این solution ساده‌تر هم قابل پیاده‌سازی است؟",
+      "label": "review"
+    },
+    {
+      "text": "DRY در این کد چه کاربردی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "در شرایط بار بالا این منطق چه مشکلی پیدا می‌کند؟",
+      "label": "review"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی یه نگاه بنداز.",
+      "label": "ui"
+    },
+    {
+      "text": "polymorphism در این مثال چگونه کار می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "مشکل layout این صفحه چیست؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "چرا CPU مصرف این برنامه زیاد شده؟",
+      "label": "performance"
+    },
+    {
+      "text": "فرق frontend و backend در این پروژه چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "لطفاً code smellهای این بخش را پیدا کن.",
+      "label": "review"
+    },
+    {
+      "text": "چرا request به endpoint نمی‌رسد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "مشکل ارتباط frontend و backend را از روی این کد پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "تنظیمات deployment را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "آیا secret داخل frontend قرار گرفته؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "security"
+    },
+    {
+      "text": "این تابع را طوری اصلاح کن که خروجی درست بدهد؛ لطفاً دقیق بررسی کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این status code چه معنایی دارد؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا این بخش کند است؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این خطای runtime را fix کن؛ لطفاً دقیق بررسی کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این خطای undefined به چه معناست؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "fallback این request چرا اجرا نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا این branch merge نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این کد را از نظر امنیتی یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این memory leak یعنی چه؟",
+      "label": "explain"
+    },
+    {
+      "text": "retry این کد درست است؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "network"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این exception چرا رخ داده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "fallback این request چرا اجرا نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "آیا responsive behavior این صفحه منطقی پیاده شده؟",
+      "label": "review"
+    },
+    {
+      "text": "branch چه کاربردی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "این تابع را طوری اصلاح کن که خروجی درست بدهد؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "آیا token امن نگهداری شده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "security"
+    },
+    {
+      "text": "قبل از merge چه چیزهایی را review کنم؟",
+      "label": "review"
+    },
+    {
+      "text": "این تغییر بهتر است در چند commit جدا شود؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا فرم submit می‌شود ولی داده‌ای ذخیره نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "چرا CPU مصرف این برنامه زیاد شده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "performance"
+    },
+    {
+      "text": "این کد را از نظر performance بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "performance"
+    },
+    {
+      "text": "این element در DOM وجود دارد ولی دیده نمی‌شود؛ علت را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "coupling این بخش را کمتر کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این error یعنی چه؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این کد closure اشتباه دارد؟ بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این async flow را بررسی کن و نقاط شکننده‌اش را بگو.",
+      "label": "review"
+    },
+    {
+      "text": "این تابع را ساده‌تر و خواناتر کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا این element نمایش داده نمی‌شود؟",
+      "label": "ui"
+    },
+    {
+      "text": "چرا authentication بعد از refresh از بین می‌رود؟",
+      "label": "debug"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این configuration را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این خطای undefined به چه معناست؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این component را به بخش‌های کوچک‌تر تقسیم کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "کدهای تکراری را حذف کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این باگ را برطرف کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا این درخواست timeout می‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "آیا می‌توان این کد را بدون تغییر رفتار ساده‌تر کرد؟",
+      "label": "review"
+    },
+    {
+      "text": "این ساختار برای رشد پروژه مناسب است؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "برای این تابع unit test بنویس؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "ورودی null و empty را هم تست کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "test"
+    },
+    {
+      "text": "کد اصلاح‌شده این مشکل را بده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "index مناسب این query چیست؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "اعتبارسنجی این فرم کجایش اشتباه است؟",
+      "label": "debug"
+    },
+    {
+      "text": "مشکل timezone این کد را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "من برنامه‌نویس حرفه‌ای نیستم؛ منطق این کد را ساده توضیح بده.",
+      "label": "explain"
+    },
+    {
+      "text": "اتصال backend به database را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "database"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "وقتی دو بار روی دکمه می‌زنم نتیجه خراب می‌شود؛ race condition را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این خطای runtime را fix کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "آیا الگوی طراحی استفاده‌شده اینجا منطقی است؟",
+      "label": "review"
+    },
+    {
+      "text": "این فایل چه نقشی در پروژه دارد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "race condition را با همین کد توضیح بده.",
+      "label": "explain"
+    },
+    {
+      "text": "این خطای runtime را fix کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این error message یعنی چه؟",
+      "label": "explain"
+    },
+    {
+      "text": "تنظیمات build مشکل دارد؟",
+      "label": "config"
+    },
+    {
+      "text": "این باگ را برطرف کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "bottleneck کد کجاست؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "آیا این ورودی در برابر XSS امن است؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "چرا این بخش کند است؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این configuration را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این merge conflict را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "database این پروژه چگونه با کد ارتباط دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این endpoint چه ورودی و خروجی‌ای دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این تابع را ساده و مرحله‌به‌مرحله توضیح بده.",
+      "label": "explain"
+    },
+    {
+      "text": "معماری این پروژه را بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا SQL injection ممکن است؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "security"
+    },
+    {
+      "text": "این کد را از نظر دسترسی‌پذیری هم review کن.",
+      "label": "review"
+    },
+    {
+      "text": "مشکل ذخیره‌سازی را با کمترین تغییر اصلاح کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این request از لحظه کلیک کاربر تا پاسخ سرور چه مسیری طی می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این pull request را review کن.",
+      "label": "git"
+    },
+    {
+      "text": "CI/CD در این پروژه چه کاری انجام می‌دهد؟",
+      "label": "explain"
+    },
+    {
+      "text": "آیا circular dependency داریم؟",
+      "label": "architecture"
+    },
+    {
+      "text": "این کد چرا قبل از آماده‌شدن داده render می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "401 و 403 چه تفاوتی دارند؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "fallback این request چرا اجرا نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا این branch merge نمی‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "authorization این endpoint درست است؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "فرق syntax error و runtime error چیست؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این کد با اینترنت ضعیف چه مشکلی دارد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "authorization این endpoint درست است؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "security"
+    },
+    {
+      "text": "اتصال backend به database را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "چرا داده‌ها بعد از refresh برنمی‌گردند؛ لطفاً دقیق بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "این کد را از نظر performance یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "برای این جریان end-to-end test پیشنهاد بده؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این تابع را طوری اصلاح کن که خروجی درست بدهد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "چرا داده‌ها بعد از refresh برنمی‌گردند؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "معماری این پروژه را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "latency این درخواست از کجاست؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "network"
+    },
+    {
+      "text": "session چیست و چه زمانی تمام می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "این package version باعث خطا شده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "config"
+    },
+    {
+      "text": "این کد را از نظر کیفیت و خطاهای احتمالی review کن.",
+      "label": "review"
+    },
+    {
+      "text": "در موبایل این بخش کار نمی‌کند ولی دسکتاپ درست است؛ کد را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "خطای CORS چیست؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "coupling این بخش را کمتر کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "ماژول‌بندی این پروژه منطقی است؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "برای این کد چه test caseهایی لازم است؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این تابع را ساده‌تر و خواناتر کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا رکورد دوبار ذخیره می‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "SOLID در این بخش به چه معناست؟",
+      "label": "explain"
+    },
+    {
+      "text": "authorization این endpoint درست است؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "security"
+    },
+    {
+      "text": "coupling این بخش را کمتر کن؛ لطفاً دقیق بررسی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این stack trace را ساده توضیح بده؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "dependency بین این بخش‌ها را تحلیل کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "unit test دقیقاً چه چیزی را تست می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "این map/filter کجا منطق اشتباه دارد؟",
+      "label": "debug"
+    },
+    {
+      "text": "این API چطور با frontend ارتباط برقرار می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "این کد را از نظر امنیتی بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این حلقه ظاهراً تمام نمی‌شود؛ علت infinite loop را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "authorization این endpoint درست است؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این خط را به زبان خیلی ساده توضیح بده.",
+      "label": "explain"
+    },
+    {
+      "text": "frontend و backend درست جدا شده‌اند؛ لطفاً دقیق بررسی کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "bottleneck کد کجاست؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این باگ را برطرف کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "SQL injection چیست و این کد چه ارتباطی با آن دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این فایل چه نقشی در پروژه دارد؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این dependency چرا لازم است؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا z-index کار نمی‌کند؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این CSS چرا اعمال نمی‌شود؟",
+      "label": "ui"
+    },
+    {
+      "text": "این syntax error را اصلاح کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این کلاس را با مسئولیت‌های مشخص‌تر بازطراحی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "responsive بودن این بخش را یه نگاه بنداز.",
+      "label": "ui"
+    },
+    {
+      "text": "responsive بودن این بخش را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این commit چه مشکلی ایجاد کرده؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "responsive بودن این بخش را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این loop را از نظر کارایی بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "آیا secret داخل frontend قرار گرفته؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "کدهای تکراری را حذف کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این API را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "end-to-end test در این پروژه چه جریانی را بررسی می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "خطای CORS چیست؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این event از کجا trigger می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا مقدار state بین دو component هماهنگ نیست؟",
+      "label": "debug"
+    },
+    {
+      "text": "test coverage چه چیزی را نشان می‌دهد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این syntax error را اصلاح کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این function چه ورودی‌هایی می‌گیرد و چه خروجی‌ای می‌دهد؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا رکورد دوبار ذخیره می‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "database"
+    },
+    {
+      "text": "این ساختار برای رشد پروژه مناسب است؟",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا z-index کار نمی‌کند؟",
+      "label": "ui"
+    },
+    {
+      "text": "چرا داده‌ها بعد از refresh برنمی‌گردند؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این component را به بخش‌های کوچک‌تر تقسیم کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "چرا در production کار می‌کند ولی development نه؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این loop را از نظر کارایی یه نگاه بنداز.",
+      "label": "performance"
+    },
+    {
+      "text": "اگر مقدار ورودی null باشد، رفتار کد چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "edge caseهای این تابع را تست کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "test"
+    },
+    {
+      "text": "این کد با اینترنت ضعیف چه مشکلی دارد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این ساختار برای رشد پروژه مناسب است؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این naming برای یک تیم توسعه مناسب است؟",
+      "label": "review"
+    },
+    {
+      "text": "این status code چه معنایی دارد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "اتصال backend به database را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "database"
+    },
+    {
+      "text": "ماژول‌بندی این پروژه منطقی است؟",
+      "label": "architecture"
+    },
+    {
+      "text": "این کد را بدون تغییر رفتار refactor کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "برای این تابع unit test بنویس؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "test"
+    },
+    {
+      "text": "این data flow را مرحله‌به‌مرحله توضیح بده.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این status code چه معنایی دارد؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این API integration از نظر ساختار کد قابل اتکاست؟",
+      "label": "review"
+    },
+    {
+      "text": "این package version باعث خطا شده؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "git"
+    },
+    {
+      "text": "چرا مقدار null وارد این تابع می‌شود؟ مسیر داده را دنبال کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "edge caseهای این تابع را تست کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این کد را با رعایت DRY تمیز کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این query را از نظر performance بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "برای این API integration test طراحی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این CSS چرا اعمال نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "ui"
+    },
+    {
+      "text": "آیا SQL injection ممکن است؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "منطق این تابع را ساده توضیح بده؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این regex روی بعضی ورودی‌ها اشتباه match می‌کند؛ مشکلش چیست؟",
+      "label": "debug"
+    },
+    {
+      "text": "این fetch را از نظر خطا بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "آیا secret داخل frontend قرار گرفته؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "چرا API در frontend کار نمی‌کند؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "آیا نام‌گذاری متغیرها و توابع واضح است؟",
+      "label": "review"
+    },
+    {
+      "text": "retry این کد درست است؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "ورودی null و empty را هم تست کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این خطای runtime را fix کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "معماری این پروژه را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "وابستگی بین این دو ماژول بیش از حد زیاد نیست؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا در production کار می‌کند ولی development نه؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "config"
+    },
+    {
+      "text": "latency این درخواست از کجاست؟",
+      "label": "network"
+    },
+    {
+      "text": "این کد با اینترنت ضعیف چه مشکلی دارد؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "این layout فقط در عرض‌های خاص به هم می‌ریزد؛ مشکل responsive را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این breakpoint چه کمکی می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "dependency بین این بخش‌ها را تحلیل کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "این error یعنی چه؟",
+      "label": "explain_error"
+    },
+    {
+      "text": "این class چه مسئولیتی دارد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "برای این باگ regression test بنویس؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "چرا این branch merge نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "مشکل ذخیره‌سازی را با کمترین تغییر اصلاح کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این مشکل فقط بعد از logout/login رخ می‌دهد؛ session را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این کد را از نظر performance بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "از نظر performance این بخش چه نقاط ضعفی دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "مشکل ذخیره‌سازی را با کمترین تغییر اصلاح کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این object responsibilities مشخصی دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا رکورد دوبار ذخیره می‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "این configuration را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "اتصال backend به database را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "dependency بین این بخش‌ها را تحلیل کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این merge conflict را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "git"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را یه نگاه بنداز.",
+      "label": "performance"
+    },
+    {
+      "text": "این function pure است یا side effect دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "این data flow را مرحله‌به‌مرحله توضیح بده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این کد از نظر scalability چه معنایی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "frontend و backend درست جدا شده‌اند؟",
+      "label": "architecture"
+    },
+    {
+      "text": "کدهای تکراری را حذف کن؛ لطفاً دقیق بررسی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این index چرا می‌تواند query را سریع‌تر کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "آیا state management این بخش بیش از حد پیچیده شده؟",
+      "label": "review"
+    },
+    {
+      "text": "برای این جریان end-to-end test پیشنهاد بده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این تابع را ساده‌تر و خواناتر کن؛ لطفاً دقیق بررسی کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "آیا circular dependency در این ساختار وجود دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا این تغییر بهتر است در چند commit باشد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "چرا بعد از merge برنامه خراب شده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "آیا memory leak داریم؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "performance"
+    },
+    {
+      "text": "این commit چه مشکلی ایجاد کرده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "index مناسب این query چیست؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "چرا اینجا از callback استفاده شده؟",
+      "label": "explain"
+    },
+    {
+      "text": "این configuration را یه نگاه بنداز.",
+      "label": "config"
+    },
+    {
+      "text": "چرا environment variable در برنامه undefined است؟",
+      "label": "debug"
+    },
+    {
+      "text": "این API را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "api"
+    },
+    {
+      "text": "کد را اجرا نکرده‌ام؛ از روی ساختار کد خطاهای محتمل را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "edge caseهای این تابع را تست کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این fetch را از نظر خطا بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این breakpoint هیچ‌وقت hit نمی‌شود؛ مسیر اجرا را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "edge caseهای این تابع را تست کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "retry چه فرقی با fallback دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "منطق این تابع را ساده توضیح بده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "توکن درست ذخیره شده ولی درخواست unauthorized است؛ مسیر auth را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "authentication این بخش را بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "این API را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "چرا درخواست fetch با خطای 401 برمی‌گردد؟",
+      "label": "debug"
+    },
+    {
+      "text": "تنظیمات deployment را بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "این error handling ناقص است؟ موارد جاافتاده را پیدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "index مناسب این query چیست؛ لطفاً دقیق بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "این کد از نظر زمانی چه complexity دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "فرق syntax error و runtime error چیست؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این migration مشکل دارد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این API را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "api"
+    },
+    {
+      "text": "این تابع چه side effectهایی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "مشکل layout این صفحه چیست؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "چرا این element نمایش داده نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "ui"
+    },
+    {
+      "text": "چرا request به endpoint نمی‌رسد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این مشکل responsive را fix کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "مشکل API را در کد برطرف کن.",
+      "label": "fix"
+    },
+    {
+      "text": "401 و 403 چه تفاوتی دارند؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "deployment این برنامه چگونه اتفاق می‌افتد؟",
+      "label": "explain"
+    },
+    {
+      "text": "مشکل API را در کد برطرف کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این دو فایل چگونه با هم کار می‌کنند؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "validation و sanitization چه تفاوتی دارند؟",
+      "label": "explain"
+    },
+    {
+      "text": "این خطای CORS از کجاست و در کد چه چیزی باید بررسی شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "این تغییر کوچک است یا چند بخش را تحت تأثیر قرار می‌دهد؟",
+      "label": "review"
+    },
+    {
+      "text": "این کد را بدون تغییر رفتار refactor کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این error message برای کاربر و توسعه‌دهنده مناسب است؟",
+      "label": "review"
+    },
+    {
+      "text": "این status code چه معنایی دارد؟",
+      "label": "explain_error"
+    },
+    {
+      "text": "برای این کد چه test caseهایی لازم است؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "test"
+    },
+    {
+      "text": "این تابع در ورودی صفر رفتار عجیبی دارد؛ بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "ui"
+    },
+    {
+      "text": "fallback این request چرا اجرا نمی‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "network"
+    },
+    {
+      "text": "آیا token امن نگهداری شده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "bottleneck کد کجاست؛ لطفاً دقیق بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "latency این درخواست از کجاست؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا cookie خوانده نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "آیا SQL injection ممکن است؛ لطفاً دقیق بررسی کن.",
+      "label": "security"
+    },
+    {
+      "text": "آیا memory leak داریم؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این معماری از نظر coupling چه مشکلی دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "کدهای تکراری را حذف کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این configuration را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این mutable state می‌تواند باگ ایجاد کند؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا circular dependency داریم؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این stack trace را ساده توضیح بده.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا API در frontend کار نمی‌کند؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "ورودی null و empty را هم تست کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "برای این جریان end-to-end test پیشنهاد بده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این مشکل responsive را fix کن؛ لطفاً دقیق بررسی کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این package version باعث خطا شده؟",
+      "label": "config"
+    },
+    {
+      "text": "چرا فایل در build نهایی پیدا نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "این component را به بخش‌های کوچک‌تر تقسیم کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این خطای undefined به چه معناست؟",
+      "label": "explain_error"
+    },
+    {
+      "text": "این ساختار پروژه را برایم توضیح بده.",
+      "label": "explain"
+    },
+    {
+      "text": "authentication و authorization چه فرقی دارند؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا dependency پیدا نمی‌شود؟",
+      "label": "config"
+    },
+    {
+      "text": "این token در کجای جریان درخواست استفاده می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "این CSS چرا اعمال نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "چرا API در frontend کار نمی‌کند؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "authentication این بخش را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این ساختار برای رشد پروژه مناسب است؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا SQL injection ممکن است؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این exception چرا رخ داده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "index مناسب این query چیست؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "چرا environment variable مقدار ندارد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "چرا در production کار می‌کند ولی development نه؟",
+      "label": "config"
+    },
+    {
+      "text": "این component چه زمانی render می‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این API را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "این خطای runtime را fix کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "تنظیمات build مشکل دارد؛ لطفاً دقیق بررسی کن.",
+      "label": "config"
+    },
+    {
+      "text": "این API جواب نمی‌دهد؛ از روی کد مسیر درخواست را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این تابع را ساده‌تر و خواناتر کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا درخواست دوبار ارسال می‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "این کد را از نظر performance بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "چرا request به endpoint نمی‌رسد؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "چرا این element نمایش داده نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "اتصال backend به database را یه نگاه بنداز؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "چرا پاسخ API می‌آید ولی JSON درست parse نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "معماری این پروژه را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این commit چه مشکلی ایجاد کرده؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "git"
+    },
+    {
+      "text": "چرا این بخش کند است؛ لطفاً دقیق بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "چرا درخواست دوبار ارسال می‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "network"
+    },
+    {
+      "text": "این صفحه در موبایل به‌هم می‌ریزد؛ بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "چرا dependency پیدا نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "config"
+    },
+    {
+      "text": "چرا این درخواست timeout می‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "index مناسب این query چیست؟",
+      "label": "database"
+    },
+    {
+      "text": "این component چه زمانی دوباره render می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا fallback من اجرا نمی‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "این exception چرا رخ داده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "کدهای تکراری را حذف کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "authentication این بخش را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "مشکل API را در کد برطرف کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "fix"
+    },
+    {
+      "text": "این stack trace را ساده توضیح بده؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "این exception چرا رخ داده؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "چرا بعد از تغییر state، مقدار قدیمی استفاده می‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "API چیست و چه فرقی با library دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "frontend و backend درست جدا شده‌اند؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این fallback رفتار قابل پیش‌بینی دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "معماری این پروژه را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "architecture"
+    },
+    {
+      "text": "چرا requestها گاهی موفق و گاهی ناموفق‌اند؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا درخواست دوبار ارسال می‌شود؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "آیا این commit بیش از حد بزرگ است؟",
+      "label": "review"
+    },
+    {
+      "text": "این کد اطلاعات حساس را در log چاپ می‌کند؟",
+      "label": "review"
+    },
+    {
+      "text": "چرا داده قبل از render آماده نیست؟",
+      "label": "debug"
+    },
+    {
+      "text": "authentication این بخش را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این CSS چرا اعمال نمی‌شود؛ لطفاً دقیق بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "این syntax error را اصلاح کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این مشکل responsive را fix کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این دو فایل چگونه به هم وابسته‌اند؟",
+      "label": "explain"
+    },
+    {
+      "text": "این log چه اطلاعاتی به ما می‌دهد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این باگ را برطرف کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "ماژول‌بندی این پروژه منطقی است؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این memory leak واقعاً از کدام listener ایجاد شده؟",
+      "label": "debug"
+    },
+    {
+      "text": "این خطای undefined به چه معناست؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "فقط مفهوم اصلی این بخش را بگو و وارد جزئیات اضافی نشو.",
+      "label": "explain"
+    },
+    {
+      "text": "technical debt در این پروژه یعنی چه؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا CPU مصرف این برنامه زیاد شده؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این component را به بخش‌های کوچک‌تر تقسیم کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این کد را از نظر امنیتی بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این fetch را از نظر خطا بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "این کد چه فرضی درباره داده‌های ورودی دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "برای این تابع unit test بنویس؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "test"
+    },
+    {
+      "text": "چرا داده‌ها بعد از refresh برنمی‌گردند؟",
+      "label": "database"
+    },
+    {
+      "text": "pull request چیست؟",
+      "label": "explain"
+    },
+    {
+      "text": "این API را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "api"
+    },
+    {
+      "text": "CSRF را ساده توضیح بده.",
+      "label": "explain"
+    },
+    {
+      "text": "این package version باعث خطا شده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این تابع را ساده‌تر و خواناتر کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "این query را از نظر performance بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "database"
+    },
+    {
+      "text": "مرز مسئولیت ماژول‌ها را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا bottleneck مشخصی در این کد دیده می‌شود؟",
+      "label": "review"
+    },
+    {
+      "text": "این CSS چرا اعمال نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این CSS چرا اعمال نمی‌شود؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "اتصال backend به database را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "مشکل layout این صفحه چیست؛ لطفاً دقیق بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "برای این تابع unit test بنویس؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "تنظیمات build مشکل دارد؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این data flow از کجا شروع و به کجا ختم می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "responsive بودن این بخش را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "ui"
+    },
+    {
+      "text": "integration test چه فرقی با unit test دارد؟",
+      "label": "explain"
+    },
+    {
+      "text": "این کلاس را با مسئولیت‌های مشخص‌تر بازطراحی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "refactor"
+    },
+    {
+      "text": "آیا اینجا refactor لازم است یا بهتر است دست نزنیم؟",
+      "label": "review"
+    },
+    {
+      "text": "این merge conflict را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "منطق این تابع را ساده توضیح بده؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این خطای undefined به چه معناست؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_error"
+    },
+    {
+      "text": "اتصال backend به database را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "این package چه کاری انجام می‌دهد؟",
+      "label": "explain"
+    },
+    {
+      "text": "گاهی درخواست موفق است و گاهی timeout می‌شود؛ منطق کد را بررسی کن.",
+      "label": "debug"
+    },
+    {
+      "text": "این خطای runtime را fix کن.",
+      "label": "fix"
+    },
+    {
+      "text": "coupling این بخش را کمتر کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "fallback این request چرا اجرا نمی‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "network"
+    },
+    {
+      "text": "این configuration را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "config"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "api"
+    },
+    {
+      "text": "این component چه زمانی render می‌شود؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این migration مشکل دارد؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "database"
+    },
+    {
+      "text": "responsive بودن این بخش را بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "ui"
+    },
+    {
+      "text": "چه ریسک‌هایی قبل از deployment باید بررسی شوند؟",
+      "label": "review"
+    },
+    {
+      "text": "این diff را از نظر خطای ناخواسته بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "coupling این بخش را کمتر کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "اگر چند علت ممکن وجود دارد، آن‌ها را بر اساس شواهد کد جدا کن.",
+      "label": "debug"
+    },
+    {
+      "text": "چرا cache باعث می‌شود نسخه قدیمی فایل را ببینم؟",
+      "label": "debug"
+    },
+    {
+      "text": "کد اصلاح‌شده این مشکل را بده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "fix"
+    },
+    {
+      "text": "این error یعنی چه؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "خطای CORS چیست؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "آیا memory leak داریم؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "کدهای تکراری را حذف کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "چرا اینجا از async/await استفاده شده؟",
+      "label": "explain"
+    },
+    {
+      "text": "برای این باگ regression test بنویس.",
+      "label": "test"
+    },
+    {
+      "text": "این package version باعث خطا شده؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "آیا secret داخل frontend قرار گرفته؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این فایل از نظر ساختار بیش از حد شلوغ است؟",
+      "label": "review"
+    },
+    {
+      "text": "این کد دقیقاً چه کاری انجام می‌دهد؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این commit چه مشکلی ایجاد کرده؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "git"
+    },
+    {
+      "text": "چرا dependency پیدا نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "config"
+    },
+    {
+      "text": "فرق syntax error و runtime error چیست؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_error"
+    },
+    {
+      "text": "مشکل layout این صفحه چیست؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "مشکل layout این صفحه چیست؟",
+      "label": "ui"
+    },
+    {
+      "text": "این merge conflict را بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "git"
+    },
+    {
+      "text": "برای این کد چه test caseهایی لازم است؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "test"
+    },
+    {
+      "text": "این query را از نظر performance بررسی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "database"
+    },
+    {
+      "text": "فرق syntax error و runtime error چیست؟",
+      "label": "explain_error"
+    },
+    {
+      "text": "این کد را از نظر performance بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "این loop را از نظر کارایی بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "این کد اجرا نمی‌شود، لطفاً دقیق بررسی کن مشکلش کجاست.",
+      "label": "debug"
+    },
+    {
+      "text": "این query نتیجه اشتباه می‌دهد؛ بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "performance"
+    },
+    {
+      "text": "منطق این تابع را ساده توضیح بده؛ لطفاً دقیق بررسی کن.",
+      "label": "explain_code"
+    },
+    {
+      "text": "چرا request به endpoint نمی‌رسد؟",
+      "label": "api"
+    },
+    {
+      "text": "چرا داده‌ها بعد از refresh برنمی‌گردند؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "این دو فایل چگونه با هم کار می‌کنند؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این optimization دقیقاً چه چیزی را بهتر می‌کند؟",
+      "label": "explain"
+    },
+    {
+      "text": "bottleneck کد کجاست؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "timeout و retry این درخواست را بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "api"
+    },
+    {
+      "text": "edge caseهای این تابع را تست کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "test"
+    },
+    {
+      "text": "چرا رکورد دوبار ذخیره می‌شود؟",
+      "label": "database"
+    },
+    {
+      "text": "آیا memory leak داریم؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "تنظیمات build مشکل دارد؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "config"
+    },
+    {
+      "text": "مصرف حافظه این قسمت را بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "performance"
+    },
+    {
+      "text": "merge conflict چرا ایجاد می‌شود؟",
+      "label": "explain"
+    },
+    {
+      "text": "این کد با اینترنت ضعیف چه مشکلی دارد؟",
+      "label": "network"
+    },
+    {
+      "text": "برای این API integration test طراحی کن؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "test"
+    },
+    {
+      "text": "آیا احتمال XSS در این بخش وجود دارد؟",
+      "label": "review"
+    },
+    {
+      "text": "این query را از نظر performance بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "database"
+    },
+    {
+      "text": "آیا circular dependency داریم؛ فقط بر اساس شواهد کد تحلیل کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این API از درخواست تا پاسخ چه مسیری دارد؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "تنظیمات deployment را یه نگاه بنداز.",
+      "label": "config"
+    },
+    {
+      "text": "کد من بدون خطای syntax اجرا می‌شود ولی خروجی اشتباه است؛ دیباگش کن.",
+      "label": "debug"
+    },
+    {
+      "text": "چرا درخواست دوبار ارسال می‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "network"
+    },
+    {
+      "text": "چرا درخواست network به endpoint اشتباه می‌رود؟",
+      "label": "debug"
+    },
+    {
+      "text": "این کد را با رعایت DRY تمیز کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "refactor"
+    },
+    {
+      "text": "این دو فایل چگونه با هم کار می‌کنند؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "response ساختار مورد انتظار را ندارد؛ بررسی کن؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "api"
+    },
+    {
+      "text": "fallback این request چرا اجرا نمی‌شود؟",
+      "label": "network"
+    },
+    {
+      "text": "چرا dependency پیدا نمی‌شود؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی بررسی کن؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "چرا CPU مصرف این برنامه زیاد شده؛ لطفاً دقیق بررسی کن.",
+      "label": "performance"
+    },
+    {
+      "text": "معماری این پروژه را بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "این UI را از نظر مشکل‌های فنی بررسی کن؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "ui"
+    },
+    {
+      "text": "این query چه داده‌ای برمی‌گرداند؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا اسکرول صفحه بعد از باز شدن پنجره قفل می‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "آیا این ورودی در برابر XSS امن است؛ اگر چند علت وجود دارد جداگانه بگو؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "این فایل چه نقشی در پروژه دارد؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "explain_code"
+    },
+    {
+      "text": "این کد را از نظر امنیتی یه نگاه بنداز.",
+      "label": "security"
+    },
+    {
+      "text": "شرط توقف این loop کجاست؟",
+      "label": "explain"
+    },
+    {
+      "text": "چرا یک رکورد دوبار در دیتابیس ثبت می‌شود؟",
+      "label": "debug"
+    },
+    {
+      "text": "برای این جریان end-to-end test پیشنهاد بده.",
+      "label": "test"
+    },
+    {
+      "text": "چرا درخواست دوبار ارسال می‌شود؟",
+      "label": "network"
+    },
+    {
+      "text": "چرا API در frontend کار نمی‌کند؛ اگر چند علت وجود دارد جداگانه بگو.",
+      "label": "api"
+    },
+    {
+      "text": "چرا dependency پیدا نمی‌شود؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "config"
+    },
+    {
+      "text": "frontend و backend درست جدا شده‌اند؛ لطفاً دقیق بررسی کن؛ دقیق و مرحله‌ای بگو.",
+      "label": "architecture"
+    },
+    {
+      "text": "آیا token امن نگهداری شده؛ دقیق و مرحله‌ای بگو.",
+      "label": "security"
+    },
+    {
+      "text": "از نظر امنیتی این ورودی‌ها خوب validate شده‌اند؟",
+      "label": "review"
+    },
+    {
+      "text": "آیا token امن نگهداری شده؟",
+      "label": "security"
+    },
+    {
+      "text": "برای این API integration test طراحی کن؛ لطفاً دقیق بررسی کن.",
+      "label": "test"
+    },
+    {
+      "text": "چرا API در frontend کار نمی‌کند؛ فقط بر اساس شواهد کد تحلیل کن.",
+      "label": "api"
+    }
+  ],
+  "stats": {
+    "terminology_count": 134,
+    "intent_count": 1126,
+    "label_distribution": {
+      "security": 60,
+      "git": 60,
+      "api": 60,
+      "debug": 95,
+      "explain_code": 60,
+      "ui": 60,
+      "test": 60,
+      "review": 93,
+      "performance": 60,
+      "explain_error": 60,
+      "network": 60,
+      "fix": 60,
+      "explain": 98,
+      "config": 60,
+      "database": 60,
+      "architecture": 60,
+      "refactor": 60
+    }
+  }
+}
