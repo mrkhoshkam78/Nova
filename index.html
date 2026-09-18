@@ -1,542 +1,103 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Be President — Strategy Simulator</title>
-  <link rel="stylesheet" href="css/styles.css" />
-  <style id="critical-fallback">
-    /* Critical styles if external CSS fails to load */
-    body{margin:0;font-family:system-ui,Tahoma,sans-serif;background:#0c1220;color:#e8eef8;direction:rtl;min-height:100vh}
-    .start-screen,.select-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem;text-align:center}
-    .start-screen h1{font-size:2.5rem;margin:0 0 .5rem;color:#38bdf8}
-    .subtitle{color:#8b9cb8;margin-bottom:1.5rem}
-    .btn-main{background:#2563eb;color:#fff;border:none;padding:.9rem 2rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer}
-    .btn-ghost{background:transparent;border:1px solid #2a3f5f;color:#8b9cb8;padding:.7rem 1.4rem;border-radius:10px;cursor:pointer;margin-top:.6rem}
-    .country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;width:min(900px,100%);max-height:50vh;overflow:auto}
-    .country-card{background:#1a2336;border:1px solid #1e2d45;border-radius:12px;padding:1rem;cursor:pointer;text-align:center}
-    #game-container{display:none}
-    .toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#1a2336;padding:.7rem 1.2rem;border-radius:8px;display:none}
-    .toast.show{display:block}
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rocket Launch Simulator V1</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <div id="app">
+    <canvas id="gameCanvas"></canvas>
 
-<!-- ===== START ===== -->
-<div id="start-screen" class="start-screen">
-  <h1>Be President</h1>
-  <p class="subtitle">شبیه‌ساز استراتژیک ریاست‌جمهوری — نسخه ۳.۷.۴</p>
-  <button class="btn-main" onclick="goToCountrySelect()">شروع بازی جدید</button>
-  <button id="btn-continue" class="btn-ghost" style="display:none" onclick="actionLoad()">ادامه بازی قبلی</button>
-</div>
+    <!-- HUD -->
+    <div id="hud">
+      <div class="hud-panel left">
+        <div class="stat">
+          <span class="label">ارتفاع</span>
+          <span id="altitude" class="value">0 m</span>
+        </div>
+        <div class="stat">
+          <span class="label">سرعت</span>
+          <span id="velocity" class="value">0 m/s</span>
+        </div>
+        <div class="stat">
+          <span class="label">شتاب</span>
+          <span id="acceleration" class="value">0 m/s²</span>
+        </div>
+        <div class="stat">
+          <span class="label">زمان پرواز</span>
+          <span id="flightTime" class="value">0.0 s</span>
+        </div>
+      </div>
 
-<!-- ===== COUNTRY SELECT ===== -->
-<div id="screen-country" class="select-screen" style="display:none">
-  <h2 style="margin-bottom:0.3rem">انتخاب کشور</h2>
-  <p class="subtitle" style="margin-bottom:0.5rem">هر کشور شروع و گیم‌پلی متفاوتی دارد</p>
-  <div id="country-cards" class="country-grid"></div>
-  <button id="btn-to-difficulty" class="btn-main" disabled onclick="goToDifficulty()">ادامه → انتخاب سختی</button>
-  <button class="btn-ghost" onclick="showStartScreen()">بازگشت</button>
-</div>
+      <div class="hud-panel right">
+        <div class="stat">
+          <span class="label">قدرت موتور</span>
+          <span id="enginePower" class="value">100%</span>
+        </div>
+        <div class="stat">
+          <span class="label">زاویه پرتاب</span>
+          <span id="launchAngle" class="value">90°</span>
+        </div>
+        <div class="stat">
+          <span class="label">وضعیت</span>
+          <span id="rocketStatus" class="value">آماده</span>
+        </div>
+        <div class="stat">
+          <span class="label">کیفیت</span>
+          <span id="qualityLevel" class="value">High</span>
+        </div>
+      </div>
+    </div>
 
-<!-- ===== DIFFICULTY ===== -->
-<div id="screen-difficulty" class="select-screen" style="display:none">
-  <h2>انتخاب درجه سختی</h2>
-  <p class="subtitle">سختی روی الگوریتم‌ها، بحران‌ها و ضرایب اقتصادی اثر واقعی دارد</p>
-  <div class="diff-row">
-    <div class="diff-card easy" data-diff="easy" onclick="selectDifficulty('easy')">
-      <h3>Easy</h3>
-      <div class="comfort">راحتی ۱۰/۱۰</div>
-      <p>منابع فراوان، بحران کمتر، رشد آسان‌تر</p>
+    <!-- Control Panel -->
+    <div id="controlPanel">
+      <div class="panel-header">
+        <h2>کنترل پرتاب</h2>
+      </div>
+
+      <div class="control-group">
+        <label for="rocketType">نوع راکت</label>
+        <select id="rocketType">
+          <option value="basic">راکت پایه</option>
+          <option value="heavy">راکت سنگین</option>
+          <option value="lightweight">راکت سبک</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="angleSlider">زاویه پرتاب: <span id="angleValue">90°</span></label>
+        <input type="range" id="angleSlider" min="30" max="90" value="90" step="1">
+      </div>
+
+      <div class="control-group">
+        <label for="powerSlider">قدرت موتور: <span id="powerValue">100%</span></label>
+        <input type="range" id="powerSlider" min="20" max="100" value="100" step="5">
+      </div>
+
+      <div class="control-group">
+        <label for="qualitySelect">کیفیت گرافیک</label>
+        <select id="qualitySelect">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high" selected>High</option>
+          <option value="ultra">Ultra</option>
+        </select>
+      </div>
+
+      <div class="button-row">
+        <button id="launchBtn" class="btn primary">پرتاب</button>
+        <button id="pauseBtn" class="btn" disabled>توقف</button>
+        <button id="resumeBtn" class="btn" disabled>ادامه</button>
+        <button id="restartBtn" class="btn secondary">راه‌اندازی مجدد</button>
+      </div>
     </div>
-    <div class="diff-card medium" data-diff="medium" onclick="selectDifficulty('medium')">
-      <h3>Medium</h3>
-      <div class="comfort">راحتی ۵/۱۰</div>
-      <p>تعادل چالش و سرگرمی</p>
-    </div>
-    <div class="diff-card realistic" data-diff="realistic" onclick="selectDifficulty('realistic')">
-      <h3>Realistic</h3>
-      <div class="comfort">راحتی ۱/۱۰</div>
-      <p>شبیه‌سازی سخت، پیامدهای سنگین</p>
-    </div>
+
+    <!-- Mobile toggle for controls -->
+    <button id="toggleControls" class="mobile-only">☰ کنترل‌ها</button>
   </div>
-  <button id="btn-start-presidency" class="btn-main" disabled onclick="startPresidency()">آغاز ریاست‌جمهوری</button>
-  <button class="btn-ghost" onclick="goToCountrySelect()">بازگشت</button>
-</div>
 
-<!-- ===== GAME ===== -->
-<div id="game-container">
-  <header class="hud">
-    <button type="button" class="menu-toggle" id="menu-toggle" onclick="toggleSideMenu()" aria-label="منو" title="منو">
-      <span class="menu-bars"></span>
-    </button>
-    <div class="hud-brand"><span id="hud-flag">🏳️</span> <span id="hud-country">—</span></div>
-    <div class="hud-stat" title="تاریخ بازی"><span class="lbl">📅</span> <span id="hud-date">2026/01</span></div>
-    <div class="hud-stat" title="بودجه"><span class="lbl">💰</span> <span id="hud-budget" class="positive">0</span></div>
-    <div class="hud-stat" title="رشد GDP"><span class="lbl">📈</span> <span id="hud-growth">0%</span></div>
-    <div class="hud-stat" title="رضایت مردم"><span class="lbl">😊</span> <span id="hud-sat">0</span></div>
-    <div class="hud-stat" title="قدرت دفاعی"><span class="lbl">🛡️</span> <span id="hud-def">0</span></div>
-    <div class="hud-stat hud-bell-wrap" onclick="toggleNotificationCenter()" title="اعلان‌ها">
-      <span class="lbl">🔔</span>
-      <span id="hud-bell-count" class="nav-badge" style="display:none">0</span>
-    </div>
-    <div class="hud-stat"><span class="lbl">⚠️</span> <span id="hud-alerts">0</span></div>
-    <div id="notification-center" class="notification-center" style="display:none">
-      <div class="ntf-header">
-        <strong>اعلان‌ها</strong>
-        <button class="btn-sm" onclick="actionMarkAllNtfRead()">همه خوانده‌شد</button>
-        <button class="btn-sm" onclick="toggleNotificationCenter()">✕</button>
-      </div>
-      <div id="notification-list" class="ntf-list"></div>
-    </div>
-    <div class="hud-time time-controls">
-      <button class="speed-btn btn" data-speed="0" onclick="setSpeed(0)">⏸</button>
-      <button class="speed-btn btn active" data-speed="1" onclick="setSpeed(1)">▶</button>
-      <button class="speed-btn btn" data-speed="3" onclick="setSpeed(3)">⏩</button>
-    </div>
-  </header>
-
-  <div class="game-body">
-    <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSideMenu()"></div>
-    <nav class="sidebar" id="side-menu">
-      <div class="sidebar-head">
-        <span class="sidebar-title">منو</span>
-        <button type="button" class="sidebar-close" onclick="closeSideMenu()" aria-label="بستن">✕</button>
-      </div>
-      <div class="nav-group">
-        <div class="nav-group-title">اصلی</div>
-        <button class="nav-item active" data-panel="map"><span class="ico">🗺️</span> نقشه</button>
-        <button class="nav-item" data-panel="overview"><span class="ico">🏠</span> کشور من</button>
-      </div>
-      <div class="nav-group">
-        <div class="nav-group-title">مدیریت</div>
-        <button class="nav-item" data-panel="upgrades"><span class="ico">⬆️</span> ارتقاها</button>
-        <button class="nav-item" data-panel="actions"><span class="ico">⚡</span> اقدامات</button>
-        <button class="nav-item" data-panel="economy"><span class="ico">💰</span> اقتصاد</button>
-        <button class="nav-item" data-panel="population"><span class="ico">👥</span> مردم</button>
-        <button class="nav-item" data-panel="military"><span class="ico">⚔️</span> نظامی</button>
-        <button class="nav-item" data-panel="intelligence"><span class="ico">🕵️</span> اطلاعات</button>
-      </div>
-      <div class="nav-group">
-        <div class="nav-group-title">خارجی</div>
-        <button class="nav-item" data-panel="diplomacy"><span class="ico">🌐</span> دیپلماسی</button>
-        <button class="nav-item" data-panel="wars"><span class="ico">⚔️</span> جنگ‌ها</button>
-        <button class="nav-item" data-panel="sanctions"><span class="ico">🚫</span> تحریم‌ها</button>
-      </div>
-      <div class="nav-group">
-        <div class="nav-group-title">سایر</div>
-        <button class="nav-item" data-panel="news"><span class="ico">📰</span> اخبار <span id="news-badge" class="nav-badge" style="display:none">0</span></button>
-        <button class="nav-item" data-panel="advisor"><span class="ico">🧠</span> مشاور</button>
-        <button class="nav-item" data-panel="president"><span class="ico">👤</span> رئیس‌جمهور</button>
-        <button class="nav-item" data-panel="stats"><span class="ico">📊</span> آمار</button>
-      </div>
-      <div class="sidebar-footer">
-        <button onclick="actionSave()">💾 ذخیره</button>
-        <button onclick="showStartScreen()">خروج</button>
-      </div>
-    </nav>
-
-    <main class="content">
-      <!-- MAP -->
-      <div id="map" class="panel active">
-        <div class="map-layout">
-          <div class="map-area">
-            <div class="map-world" id="map-world">
-              <!-- nodes filled by JS -->
-            </div>
-          </div>
-          <div class="map-side">
-            <div class="side-card">
-              <h4>📋 وضعیت سریع</h4>
-              <div class="mini-stats" id="map-quick-stats"></div>
-            </div>
-            <div class="side-card">
-              <h4>⚠️ هشدارها</h4>
-              <div id="map-alerts"></div>
-            </div>
-            <div class="side-card">
-              <h4>🧠 مشاور</h4>
-              <div id="map-advisor-mini" class="muted">—</div>
-            </div>
-            <div id="map-country-detail" class="country-detail-panel" style="display:none"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- OVERVIEW -->
-      <div id="overview" class="panel">
-        <div class="panel-title">🏠 کشور من</div>
-        <div class="stat-grid" id="overview-stats"></div>
-        <div class="section">
-          <h3>نقاط قوت و ضعف</h3>
-          <div id="overview-sw"></div>
-        </div>
-        <div class="section">
-          <h3>پروژه‌های فعال</h3>
-          <div id="overview-projects" class="muted">هیچ پروژه‌ای در جریان نیست</div>
-        </div>
-      </div>
-
-      <!-- UPGRADES V3 -->
-      <div id="upgrades" class="panel">
-        <div class="panel-title">⬆️ ارتقاها (UPGRADES)</div>
-        <p class="muted" style="margin-bottom:0.8rem">تمام ارتقاهای اقتصادی، نظامی، فناوری، اطلاعاتی و زیرساختی. حداکثر سطح: ۱۰۰</p>
-        <div id="upgrades-grid" class="upgrade-grid"></div>
-        <div class="section" style="margin-top:1rem">
-          <h3>🗳️ وضعیت انتخابات</h3>
-          <div id="election-status" class="stat-grid"></div>
-        </div>
-      </div>
-
-      <!-- ACTIONS -->
-      <div id="actions" class="panel">
-        <div class="panel-title">⚡ اقدامات</div>
-        <div class="action-tabs" id="action-tabs">
-          <button class="action-tab active" data-cat="economy" onclick="switchActionCat('economy')">💰 اقتصادی</button>
-          <button class="action-tab" data-cat="domestic" onclick="switchActionCat('domestic')">👥 داخلی</button>
-          <button class="action-tab" data-cat="military" onclick="switchActionCat('military')">⚔️ نظامی</button>
-          <button class="action-tab" data-cat="intelligence" onclick="switchActionCat('intelligence')">🕵️ اطلاعاتی</button>
-          <button class="action-tab" data-cat="diplomacy" onclick="switchActionCat('diplomacy')">🌐 دیپلماتیک</button>
-        </div>
-        <div id="action-list" class="action-list"></div>
-        <div id="action-detail" class="action-detail" style="display:none">
-          <div class="action-detail-header">
-            <span id="ad-icon"></span>
-            <h3 id="ad-title"></h3>
-          </div>
-          <p id="ad-desc" class="muted"></p>
-          <div class="action-meta-grid">
-            <div><span class="lbl">هزینه</span><span id="ad-cost">—</span></div>
-            <div><span class="lbl">زمان</span><span id="ad-time">—</span></div>
-            <div><span class="lbl">تأثیر</span><span id="ad-impact">—</span></div>
-            <div><span class="lbl">ریسک</span><span id="ad-risk">—</span></div>
-          </div>
-          <div id="ad-controls" class="action-controls"></div>
-          <button class="btn-main" id="ad-execute" onclick="executeSelectedAction()">اجرای اقدام</button>
-        </div>
-      </div>
-
-      <!-- NEWS -->
-      <div id="news" class="panel">
-        <div class="panel-title">📰 اخبار
-          <button class="btn-ghost btn-sm" onclick="markAllNewsReadUI()" style="float:left;margin-top:-4px">خواندن همه</button>
-        </div>
-        <div class="news-filters">
-          <button class="news-filter active" data-filter="all" onclick="filterNews('all')">همه</button>
-          <button class="news-filter" data-filter="domestic" onclick="filterNews('domestic')">🏛️ داخلی</button>
-          <button class="news-filter" data-filter="global" onclick="filterNews('global')">🌍 جهانی</button>
-          <button class="news-filter" data-filter="economy" onclick="filterNews('economy')">💰 اقتصادی</button>
-          <button class="news-filter" data-filter="diplomacy" onclick="filterNews('diplomacy')">🌐 دیپلماسی</button>
-          <button class="news-filter" data-filter="military" onclick="filterNews('military')">⚔️ نظامی</button>
-        </div>
-        <div id="news-feed" class="news-feed"></div>
-      </div>
-
-      <!-- ECONOMY -->
-      <div id="economy" class="panel">
-        <div class="panel-title">💰 اقتصاد</div>
-        <div class="stat-grid" id="eco-stats"></div>
-        <div class="section">
-          <h3>اقدامات اقتصادی</h3>
-          <div class="form-row">
-            <label>نرخ مالیات:</label>
-            <input type="range" id="tax-slider" min="8" max="45" value="22" oninput="document.getElementById('tax-value').textContent=this.value+'%'" />
-            <span id="tax-value">22%</span>
-            <button class="btn" onclick="actionChangeTax()">اعمال</button>
-          </div>
-          <div class="form-row">
-            <label>سرمایه‌گذاری زیرساخت:</label>
-            <input type="number" id="infra-amount" value="10" min="5" max="50" />
-            <button class="btn" onclick="actionInvestInfra()">شروع پروژه</button>
-          </div>
-        </div>
-        <div class="section loan-section">
-          <h3>💳 سیستم وام و بدهی</h3>
-          <div id="credit-rating-box" style="margin-bottom:0.8rem"></div>
-          <div class="loan-form">
-            <h4>📥 دریافت وام</h4>
-            <div class="form-row">
-              <label>منبع:</label>
-              <select id="loan-source">
-                <option value="domestic_bank">بانک داخلی</option>
-                <option value="imf">صندوق بین‌المللی (IMF)</option>
-                <option value="foreign_country">کشور خارجی</option>
-              </select>
-            </div>
-            <div class="form-row" id="loan-source-country-row" style="display:none">
-              <label>کشور وام‌دهنده:</label>
-              <select id="loan-source-country"></select>
-            </div>
-            <div class="form-row">
-              <label>مبلغ:</label>
-              <input type="number" id="loan-amount" value="20" min="5" max="200" step="5" oninput="previewLoanTaken()" />
-            </div>
-            <div class="form-row">
-              <label>مدت (سال):</label>
-              <input type="number" id="loan-years" value="5" min="2" max="15" oninput="previewLoanTaken()" />
-            </div>
-            <div id="loan-taken-preview" class="loan-preview">—</div>
-            <button class="btn btn-success" onclick="actionRequestLoan()">دریافت وام</button>
-          </div>
-          <div class="loan-form" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-color:#7dd3fc">
-            <h4 style="color:#0284c7">📤 اعطای وام به کشور دیگر</h4>
-            <div class="form-row">
-              <label>کشور مقصد:</label>
-              <select id="loan-target-country"></select>
-            </div>
-            <div class="form-row">
-              <label>مبلغ:</label>
-              <input type="number" id="loan-give-amount" value="10" min="3" max="80" step="1" oninput="previewLoanGiven()" />
-            </div>
-            <div class="form-row">
-              <label>بهره (%):</label>
-              <input type="number" id="loan-give-rate" value="5" min="2" max="12" step="0.5" oninput="previewLoanGiven()" />
-            </div>
-            <div class="form-row">
-              <label>مدت (سال):</label>
-              <input type="number" id="loan-give-years" value="5" min="2" max="12" oninput="previewLoanGiven()" />
-            </div>
-            <div id="loan-given-preview" class="loan-preview">—</div>
-            <button class="btn" onclick="actionGiveLoan()">اعطای وام</button>
-          </div>
-          <h4 style="margin:1rem 0 0.5rem">📋 وام‌های فعال</h4>
-          <div id="loans-list"></div>
-        </div>
-      </div>
-
-      <!-- POPULATION -->
-      <div id="population" class="panel">
-        <div class="panel-title">👥 مردم</div>
-        <div class="stat-grid" id="pop-stats"></div>
-        <p class="muted">رضایت تحت تأثیر تورم، بیکاری، مالیات، امنیت و کیفیت زندگی است.</p>
-      </div>
-
-      <!-- MILITARY -->
-      <div id="military" class="panel">
-        <div class="panel-title">⚔️ نظامی</div>
-        <div class="stat-grid" id="mil-stats"></div>
-        <div class="section">
-          <h3>بودجه نظامی ماهانه</h3>
-          <div id="mil-budget-controls" class="upgrade-grid"></div>
-        </div>
-        <div class="section">
-          <h3>توسعه نیرو (مشابه ارتقا)</h3>
-          <p class="muted" style="font-size:0.8rem;margin-bottom:0.6rem">بدون ورود عدد — هزینه از بودجه نقدی کسر می‌شود. سطح فعلی / حداکثر را ببینید.</p>
-          <div id="mil-dev-grid" class="upgrade-grid"></div>
-        </div>
-        <div class="section">
-          <h3>تحقیق و آمادگی</h3>
-          <div id="mil-research-row" class="form-row" style="flex-wrap:wrap;gap:0.5rem">
-            <button class="btn" onclick="actionResearchMilLevel(1)">🔬 تحقیق +1</button>
-            <button class="btn" onclick="actionResearchMilLevel(3)">🔬 تحقیق +3</button>
-            <button class="btn btn-success" onclick="actionTrain()">🏋️ تمرین فشرده</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- WARS V3.3 -->
-      <div id="wars" class="panel">
-        <div class="panel-title">⚔️ جنگ‌ها و عملیات نظامی</div>
-        <div class="section">
-          <h3>جنگ‌های فعال</h3>
-          <div id="active-wars-list" class="muted">هیچ جنگ فعالی وجود ندارد</div>
-        </div>
-        <div class="section war-command">
-          <h3>⚔️ فرماندهی عملیات</h3>
-          <div class="form-row">
-            <label>کشور هدف</label>
-            <select id="war-target" class="country-select" style="min-width:200px"><option value="">انتخاب کشور...</option></select>
-            <button class="btn btn-danger btn-lg" onclick="actionStartWar()" id="btn-declare-war">🚨 اعلام جنگ / شروع درگیری</button>
-          </div>
-          <p class="muted" style="margin:0.5rem 0 0.7rem;font-size:0.8rem">ابتدا کشور را انتخاب کنید، سپس اعلام جنگ یا نوع حمله را بزنید.</p>
-          <div class="attack-grid">
-            <button class="attack-btn" onclick="actionMilOp('ground')"><span class="ab-ico">🪖</span><span>حمله زمینی</span></button>
-            <button class="attack-btn" onclick="actionMilOp('air')"><span class="ab-ico">✈️</span><span>حمله هوایی</span></button>
-            <button class="attack-btn" onclick="actionMilOp('missile')"><span class="ab-ico">🚀</span><span>حمله موشکی</span></button>
-            <button class="attack-btn" onclick="actionMilOp('naval')"><span class="ab-ico">🚢</span><span>حمله دریایی</span></button>
-            <button class="attack-btn" onclick="actionMilOp('military_facilities')"><span class="ab-ico">🏭</span><span>تأسیسات نظامی</span></button>
-            <button class="attack-btn" onclick="actionMilOp('economic_facilities')"><span class="ab-ico">🏗️</span><span>تأسیسات اقتصادی</span></button>
-            <button class="attack-btn danger" onclick="actionMilOp('residential')"><span class="ab-ico">🏙️</span><span>مناطق مسکونی</span></button>
-            <button class="attack-btn danger" onclick="actionMilOp('assassination')"><span class="ab-ico">🎯</span><span>ترور هدفمند</span></button>
-          </div>
-          <div class="form-row" style="margin-top:0.7rem">
-            <label>تعداد موشک</label>
-            <input type="number" id="missile-count" value="2" min="1" max="20" style="width:70px" />
-            <span class="muted" id="missile-stock">موجودی: —</span>
-          </div>
-          <div id="leaders-box" class="muted" style="margin-top:0.5rem"></div>
-          <div id="combat-breakdown" class="combat-breakdown" style="display:none"></div>
-        </div>
-        <div class="section">
-          <h3>🛡️ دارایی‌های نظامی</h3>
-          <div id="military-assets" class="asset-grid"></div>
-        </div>
-        <div class="section">
-          <h3>تولید تجهیزات نظامی</h3>
-          <div id="equipment-stock" class="stat-grid"></div>
-          <div class="form-row" style="flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem">
-            <input type="number" id="prod-amount" value="2" min="1" max="15" style="width:60px" />
-            <button class="btn btn-sm" onclick="actionProduce('missiles')">🚀 موشک</button>
-            <button class="btn btn-sm" onclick="actionProduce('tanks')">🛡️ تانک</button>
-            <button class="btn btn-sm" onclick="actionProduce('apc')">🚛 نفربر</button>
-            <button class="btn btn-sm" onclick="actionProduce('antiAir')">📡 پدافند</button>
-            <button class="btn btn-sm" onclick="actionProduce('antiMissile')">🛡️ ضدموشک</button>
-            <button class="btn btn-sm" onclick="actionProduce('specialForces')">🎖️ ویژه</button>
-          </div>
-        </div>
-        <div class="section collapsible">
-          <h3 class="collapse-toggle" onclick="toggleCollapse(this)">اتحادها ▾</h3>
-          <div class="collapse-body">
-            <div id="alliances-list" class="muted">—</div>
-            <div class="form-row" style="margin-top:0.5rem">
-              <select id="ally-target" class="country-select"><option value="">کشور...</option></select>
-              <button class="btn" onclick="actionCreateAlliance('military')">اتحاد نظامی</button>
-              <button class="btn" onclick="actionCreateAlliance('economic')">اتحاد اقتصادی</button>
-            </div>
-          </div>
-        </div>
-        <div class="section collapsible">
-          <h3 class="collapse-toggle" onclick="toggleCollapse(this)">بحران‌های جهانی ▾</h3>
-          <div class="collapse-body">
-            <div id="crises-list" class="muted">—</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- INTELLIGENCE -->
-      <div id="intelligence" class="panel">
-        <div class="panel-title">🕵️ اطلاعات و عملیات مخفی</div>
-        <div class="stat-grid" id="int-stats"></div>
-        <div class="section">
-          <h3>عملیات فعال</h3>
-          <div id="intel-ops-list" class="muted">—</div>
-        </div>
-        <div class="section">
-          <h3>اقدامات</h3>
-          <div class="form-row">
-            <label>بودجه اطلاعات:</label>
-            <input type="number" id="intel-budget-input" value="4.5" min="1" max="20" step="0.5" />
-            <button class="btn" onclick="actionIntelBudget()">تنظیم</button>
-            <button class="btn btn-success" onclick="actionGatherIntel()">جمع‌آوری اطلاعات</button>
-          </div>
-          <div class="form-row">
-            <select id="covert-target" class="country-select">
-              <option value="">هدف...</option>
-            </select>
-            <button class="btn" onclick="actionStartCovert('spy')">جاسوسی</button>
-            <button class="btn" onclick="actionStartCovert('sabotage')">خرابکاری</button>
-            <button class="btn" onclick="actionStartCovert('infiltrate')">نفوذ</button>
-            <button class="btn btn-danger" onclick="actionStartCovert('targeted')">هدفمند</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- DIPLOMACY -->
-      <div id="diplomacy" class="panel">
-        <div class="panel-title">🌐 دیپلماسی</div>
-        <div class="section">
-          <h3>روابط</h3>
-          <div id="relations-list"></div>
-        </div>
-        <div class="section">
-          <h3>توافق‌های فعال</h3>
-          <div id="agreements-list" class="muted">—</div>
-        </div>
-        <div class="section">
-          <h3>پیشنهاد توافق</h3>
-          <div class="form-row">
-            <select id="agree-target" class="country-select">
-              <option value="">کشور...</option>
-            </select>
-            <button class="btn" onclick="actionProposeAgreement('trade')">تجاری</button>
-            <button class="btn" onclick="actionProposeAgreement('economic')">اقتصادی</button>
-            <button class="btn" onclick="actionProposeAgreement('energy')">انرژی</button>
-            <button class="btn" onclick="actionProposeAgreement('defense')">دفاعی</button>
-            <button class="btn" onclick="actionProposeAgreement('military')">نظامی</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- SANCTIONS -->
-      <div id="sanctions" class="panel">
-        <div class="panel-title">🚫 تحریم‌ها</div>
-        <div id="sanctions-list" class="section muted">هیچ تحریمی فعال نیست</div>
-      </div>
-
-      <!-- ADVISOR -->
-      <div id="advisor" class="panel">
-        <div class="panel-title">🧠 مشاور ریاست‌جمهوری</div>
-        <p class="muted" style="margin-bottom:1rem">همیشه دقیقاً ۳ پیشنهاد متناسب با وضعیت فعلی</p>
-        <div id="advisor-cards" class="advisor-grid"></div>
-      </div>
-
-      <!-- PRESIDENT -->
-      <div id="president" class="panel">
-        <div class="panel-title">👤 رئیس‌جمهور</div>
-        <div class="section">
-          <h3>سطح و تجربه</h3>
-          <div class="stat-grid">
-            <div class="stat-box"><div class="lbl">سطح</div><div class="val" id="pres-level">1</div></div>
-            <div class="stat-box"><div class="lbl">XP</div><div class="val" id="pres-xp">0</div></div>
-            <div class="stat-box"><div class="lbl">امتیاز مهارت</div><div class="val" id="pres-points">0</div></div>
-          </div>
-        </div>
-        <div class="section">
-          <h3>مهارت‌ها</h3>
-          <div id="pres-skills"></div>
-          <p class="muted" style="margin-top:0.6rem">مهارت‌ها روی اقتصاد، دیپلماسی، عملیات مخفی و فرماندهی اثر واقعی دارند.</p>
-        </div>
-      </div>
-
-      <!-- STATS -->
-      <div id="stats" class="panel">
-        <div class="panel-title">📊 آمار و تاریخچه</div>
-        <div class="section">
-          <h3>رویدادهای اخیر</h3>
-          <div id="stats-events" class="muted">—</div>
-        </div>
-        <div class="section">
-          <h3>گزارش اقدامات</h3>
-          <div id="stats-log" class="muted" style="max-height:200px;overflow-y:auto;font-size:0.85rem">—</div>
-        </div>
-      </div>
-    </main>
-  </div>
-</div>
-
-<!-- Event Modal -->
-<div id="event-modal" class="event-modal-overlay">
-  <div class="event-modal">
-    <div class="ev-icon" id="event-icon">📢</div>
-    <h2 id="event-title">رویداد</h2>
-    <p class="ev-desc" id="event-desc"></p>
-    <div id="event-choices"></div>
-  </div>
-</div>
-
-<div id="toast" class="toast"></div>
-
-<script src="js/data.js"></script>
-<script src="js/bootstrap.js"></script>
-<script src="js/state.js"></script>
-<script src="js/limits.js"></script>
-<script src="js/strength.js"></script>
-<script src="js/upgrades.js"></script>
-<script src="js/notifications.js"></script>
-<script src="js/production.js"></script>
-<script src="js/economy.js"></script>
-<script src="js/military.js"></script>
-<script src="js/intelligence.js"></script>
-<script src="js/diplomacy.js"></script>
-<script src="js/wars.js"></script>
-<script src="js/alliances.js"></script>
-<script src="js/crisis.js"></script>
-<script src="js/election.js"></script>
-<script src="js/events.js"></script>
-<script src="js/advisor.js"></script>
-<script src="js/save.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/game.js"></script>
-
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
