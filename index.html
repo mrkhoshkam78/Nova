@@ -4,12 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <meta name="theme-color" content="#10221d">
-  <title>Kingdom Forge: Frontier</title>
+  <title>Kingdom Forge: Frontier — 3D</title>
   <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">⚔ KINGDOM <em>FORGE</em><small>FRONTIER</small></div>
+    <div class="brand">⚔ KINGDOM <em>FORGE</em><small>FRONTIER 3D</small></div>
     <div class="resources">
       <div class="res"><span>💎</span><b id="diamonds">750</b><small>الماس</small></div>
       <div class="res"><span>🪨</span><b id="stone">420</b><small>سنگ</small></div>
@@ -20,10 +28,9 @@
   </header>
 
   <main>
-    <div class="scene">
-      <canvas id="world" aria-label="محیط بازی"></canvas>
+    <div class="scene" id="scene-container">
       <div class="scene-vignette"></div>
-      <div class="notice" id="msg">به سرزمینت خوش آمدی، فرمانده!</div>
+      <div class="notice" id="msg">به سرزمینت خوش آمدی، فرمانده! (موتور Three.js فعال)</div>
       <div class="view-controls">
         <button id="left">⤺</button>
         <button id="right">⤻</button>
@@ -63,8 +70,8 @@
     <button id="close" class="iconbtn">✕</button>
     <h2>منوی بازی</h2>
     <p>نسخه آفلاین — پیشرفت روی همین دستگاه ذخیره می‌شود.</p>
-    <p>توکن‌ها منبعی کمیاب و محدود هستند و فعلاً کاربرد مصرفی ندارند.</p>
-    <p style="color:#a8d080;font-size:12px;margin-top:12px">✦ موتور گرافیکی ۴K فعال است</p>
+    <p>موتور گرافیکی: <b style="color:#8fd46a">Three.js + ایزومتریک سه‌بعدی</b></p>
+    <p style="font-size:11px;color:#a8bba4">Assetهای رایگان Kenney (CC0) در پوشه assets موجود است.</p>
     <button id="reset">شروع دوباره</button>
   </aside>
 
@@ -79,9 +86,6 @@
 
   <div id="rotateTip" class="rotate-tip">↻<br>برای تجربه بهتر، دستگاه را افقی نگه دار</div>
 
-  <!-- موتور گرافیکی پیشرفته (فقط رندر) -->
-  <script src="graphics-engine.js"></script>
-  <!-- منطق بازی -->
-  <script src="game.js"></script>
+  <script type="module" src="game3d.js"></script>
 </body>
 </html>
