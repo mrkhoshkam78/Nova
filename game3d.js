@@ -1,5 +1,5 @@
 /**
- * KingTown v6.0.1 — جهش گرافیکی عمیق
+ * KingTown v6.1.0 — جهش گرافیکی عمیق
  * بافت رویه‌ای · شیدر · ذرات · روز/شب · ابر · گیاه · پرچم · مسیر · Kenney · جزئیات کامل
  */
 import * as THREE from 'three';
@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const $ = id => document.getElementById(id);
 const container = document.getElementById('scene-container');
-const SAVE_KEY = 'kingTown_v601';
+const SAVE_KEY = 'kingTown_v610';
 
 let diamonds = 200, stone = 420, tokens = 15, oil = 0, level = 1;
 let rot = 0, zoom = 1.08, mode = 'build', chosen = null, selectedKey = null, moveTarget = null;
@@ -36,7 +36,13 @@ function campLimit() { return 20 + getThLevel() * 5; }
 function thUpgradeSeconds(n) { return 120 * n; }
 function capacity() {
   const lv = getThLevel();
-  return { diamonds: 500, stone: 900 + lv * 300, oil: 40 + lv * 20, tokens: TOKEN_MAX };
+  // ظرفیت کامل وابسته به سطح مرکز فرماندهی
+  return {
+    diamonds: 300 + lv * 200,
+    stone: 600 + lv * 400,
+    oil: 30 + lv * 25,
+    tokens: TOKEN_MAX
+  };
 }
 function canUpgradeTH(next) {
   return buildings.filter(b => b.type !== 'wall' && b.type !== 'townhall').length >= Math.max(2, next);
@@ -134,6 +140,62 @@ texDirt.repeat.set(3, 3);
 
 const texMetal = makeNoiseCanvas(64, (x, y) => {
   const n = hash2(x * 0.4, y * 0.4) * 0.3;
+
+function smoothNoise(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1);
+  return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+function fbm(x, y, oct) {
+  oct = oct || 4;
+  let v = 0, a = 0.5, f = 1;
+  for (let i = 0; i < oct; i++) { v += a * smoothNoise(x * f, y * f); f *= 2; a *= 0.5; }
+  return v;
+}
+function makeNormalApprox(size, heightFn) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const hL = heightFn(x - 1, y), hR = heightFn(x + 1, y);
+      const hD = heightFn(x, y - 1), hU = heightFn(x, y + 1);
+      let nx = (hL - hR) * 0.5, ny = (hD - hU) * 0.5, nz = 1.0;
+      const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+      const i = (y * size + x) * 4;
+      img.data[i] = ((nx / len) * 0.5 + 0.5) * 255;
+      img.data[i + 1] = ((ny / len) * 0.5 + 0.5) * 255;
+      img.data[i + 2] = ((nz / len) * 0.5 + 0.5) * 255;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+const texCobble = makeNoiseCanvas(128, (x, y) => {
+  const cx = Math.floor(x / 16), cy = Math.floor(y / 16);
+  const n = hash2(cx, cy);
+  const lx = x % 16, ly = y % 16;
+  const edge = (lx < 1 || ly < 1 || lx > 14 || ly > 14) ? 30 : 0;
+  const v = 100 + n * 50 - edge;
+  return [v * 0.9, v * 0.92, v * 0.88];
+});
+if (texCobble.repeat) texCobble.repeat.set(2, 2);
+const texPlasterHQ = makeNoiseCanvas(128, (x, y) => {
+  const n = hash2(x * 0.1, y * 0.1);
+  return [200 + n * 30, 190 + n * 25, 160 + n * 20];
+});
+const texGoldHQ = makeNoiseCanvas(64, (x, y) => {
+  const n = hash2(x * 0.2, y * 0.2);
+  return [220 + n * 30, 180 + n * 40, 40 + n * 20];
+});
+const nmlStone = makeNormalApprox(64, (x, y) => hash2(x * 0.2, y * 0.2));
+const nmlGrass = makeNormalApprox(64, (x, y) => hash2(x * 0.15, y * 0.15));
   const v = 100 + n * 50;
   return [v, v * 1.05, v * 0.95];
 });
@@ -971,7 +1033,8 @@ renderer.domElement.addEventListener('pointerdown', e => {
   if (mode === 'rotate') {
     if (occupied?.type === 'wall') {
       occupied.rotY = ((occupied.rotY || 0) + 45) % 360;
-      rebuildBuildings(); selectedKey = key; updateSelectionVisual();
+      try { enhanceMaterialsWithNormals(); scatterExtraVegetation(); } catch (e) { console.warn(e); }
+rebuildBuildings(); selectedKey = key; updateSelectionVisual();
       message('زاویه دیوار: ' + occupied.rotY + '°');
     } else message('فقط دیوار قابل چرخش است');
     return;
@@ -1429,11 +1492,980 @@ refreshTroopVisuals();
 updateUI();
 animate();
 
+
+const DetailLib = {
+  addBrickRow(g, y, w, d, mat) {
+    const row = new THREE.Mesh(new THREE.BoxGeometry(w, 0.04, d), mat);
+    row.position.y = y; g.add(row); return row;
+  },
+  addWindowLit(g, x, y, z, intensity) {
+    intensity = intensity || 0.4;
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0xf5e090, emissive: 0x775500, emissiveIntensity: intensity }));
+    win.position.set(x, y, z); g.add(win); return win;
+  },
+  addColumn(g, x, y, z, h, mat) {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, h, 6), mat);
+    col.position.set(x, y, z); col.castShadow = true; g.add(col); return col;
+  },
+  addCrate(g, x, y, z, s) {
+    s = s || 0.3;
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(s, s * 0.8, s * 0.9), M.wood);
+    crate.position.set(x, y, z); crate.castShadow = true; g.add(crate); return crate;
+  },
+  addBarrel(g, x, y, z) {
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.28, 8), M.woodDark);
+    barrel.position.set(x, y, z); barrel.castShadow = true; g.add(barrel);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.015, 4, 10), M.metalDark);
+    ring.rotation.x = Math.PI / 2; ring.position.set(x, y + 0.05, z); g.add(ring);
+    return barrel;
+  },
+  addLantern(g, x, y, z) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 5), M.wood);
+    pole.position.set(x, y, z); g.add(pole);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5),
+      new THREE.MeshStandardMaterial({ color: 0xffcc66, emissive: 0xffaa33, emissiveIntensity: 0.6 }));
+    lamp.position.set(x, y + 0.3, z); g.add(lamp);
+    const light = new THREE.PointLight(0xffaa55, 0.35, 3);
+    light.position.set(x, y + 0.3, z); g.add(light);
+    return lamp;
+  },
+  addFlower(g, x, z, color) {
+    color = color || 0xe05080;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 4), M.leaf);
+    stem.position.set(x, 0.1, z); g.add(stem);
+    const pet = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4),
+      new THREE.MeshStandardMaterial({ color: color, roughness: 0.7 }));
+    pet.position.set(x, 0.22, z); g.add(pet); return pet;
+  },
+  addRockPile(g, x, z, n) {
+    n = n || 5;
+    for (let i = 0; i < n; i++) {
+      const s = 0.08 + Math.random() * 0.12;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), i % 2 ? M.stone : M.stoneDark);
+      rock.position.set(x + (Math.random() - 0.5) * 0.4, s * 0.5, z + (Math.random() - 0.5) * 0.4);
+      rock.rotation.set(Math.random(), Math.random(), Math.random());
+      rock.castShadow = true; g.add(rock);
+    }
+  },
+  surfacePresets: {
+    royalStone: { color: 0xb8a888, roughness: 0.55, metalness: 0.12 },
+    darkOak: { color: 0x4a3018, roughness: 0.8, metalness: 0.05 },
+    copperRoof: { color: 0xb07040, roughness: 0.45, metalness: 0.25 },
+    slateRoof: { color: 0x4a5560, roughness: 0.5, metalness: 0.15 },
+    marble: { color: 0xe8e0d0, roughness: 0.4, metalness: 0.1 },
+    ironBand: { color: 0x3a3a42, roughness: 0.35, metalness: 0.7 },
+    mossy: { color: 0x5a7a48, roughness: 0.85, metalness: 0.0 },
+    sandBrick: { color: 0xc4a870, roughness: 0.7, metalness: 0.05 }
+  },
+  matFromPreset(name) {
+    const p = this.surfacePresets[name] || this.surfacePresets.royalStone;
+    return new THREE.MeshStandardMaterial({ color: p.color, roughness: p.roughness, metalness: p.metalness });
+  },
+  ornamentPatterns: [
+    { id: 0, sides: 4, radius: 0.10, h: 0.15, mat: "stone" },
+    { id: 1, sides: 5, radius: 0.12, h: 0.20, mat: "wood" },
+    { id: 2, sides: 6, radius: 0.14, h: 0.25, mat: "metal" },
+    { id: 3, sides: 7, radius: 0.16, h: 0.30, mat: "gold" },
+    { id: 4, sides: 8, radius: 0.18, h: 0.15, mat: "stone" },
+    { id: 5, sides: 4, radius: 0.20, h: 0.20, mat: "wood" },
+    { id: 6, sides: 5, radius: 0.22, h: 0.25, mat: "metal" },
+    { id: 7, sides: 6, radius: 0.10, h: 0.30, mat: "gold" },
+    { id: 8, sides: 7, radius: 0.12, h: 0.15, mat: "stone" },
+    { id: 9, sides: 8, radius: 0.14, h: 0.20, mat: "wood" },
+    { id: 10, sides: 4, radius: 0.16, h: 0.25, mat: "metal" },
+    { id: 11, sides: 5, radius: 0.18, h: 0.30, mat: "gold" },
+    { id: 12, sides: 6, radius: 0.20, h: 0.15, mat: "stone" },
+    { id: 13, sides: 7, radius: 0.22, h: 0.20, mat: "wood" },
+    { id: 14, sides: 8, radius: 0.10, h: 0.25, mat: "metal" },
+    { id: 15, sides: 4, radius: 0.12, h: 0.30, mat: "gold" },
+    { id: 16, sides: 5, radius: 0.14, h: 0.15, mat: "stone" },
+    { id: 17, sides: 6, radius: 0.16, h: 0.20, mat: "wood" },
+    { id: 18, sides: 7, radius: 0.18, h: 0.25, mat: "metal" },
+    { id: 19, sides: 8, radius: 0.20, h: 0.30, mat: "gold" },
+    { id: 20, sides: 4, radius: 0.22, h: 0.15, mat: "stone" },
+    { id: 21, sides: 5, radius: 0.10, h: 0.20, mat: "wood" },
+    { id: 22, sides: 6, radius: 0.12, h: 0.25, mat: "metal" },
+    { id: 23, sides: 7, radius: 0.14, h: 0.30, mat: "gold" },
+    { id: 24, sides: 8, radius: 0.16, h: 0.15, mat: "stone" },
+    { id: 25, sides: 4, radius: 0.18, h: 0.20, mat: "wood" },
+    { id: 26, sides: 5, radius: 0.20, h: 0.25, mat: "metal" },
+    { id: 27, sides: 6, radius: 0.22, h: 0.30, mat: "gold" },
+    { id: 28, sides: 7, radius: 0.10, h: 0.15, mat: "stone" },
+    { id: 29, sides: 8, radius: 0.12, h: 0.20, mat: "wood" },
+    { id: 30, sides: 4, radius: 0.14, h: 0.25, mat: "metal" },
+    { id: 31, sides: 5, radius: 0.16, h: 0.30, mat: "gold" },
+    { id: 32, sides: 6, radius: 0.18, h: 0.15, mat: "stone" },
+    { id: 33, sides: 7, radius: 0.20, h: 0.20, mat: "wood" },
+    { id: 34, sides: 8, radius: 0.22, h: 0.25, mat: "metal" },
+    { id: 35, sides: 4, radius: 0.10, h: 0.30, mat: "gold" },
+    { id: 36, sides: 5, radius: 0.12, h: 0.15, mat: "stone" },
+    { id: 37, sides: 6, radius: 0.14, h: 0.20, mat: "wood" },
+    { id: 38, sides: 7, radius: 0.16, h: 0.25, mat: "metal" },
+    { id: 39, sides: 8, radius: 0.18, h: 0.30, mat: "gold" },
+    { id: 40, sides: 4, radius: 0.20, h: 0.15, mat: "stone" },
+    { id: 41, sides: 5, radius: 0.22, h: 0.20, mat: "wood" },
+    { id: 42, sides: 6, radius: 0.10, h: 0.25, mat: "metal" },
+    { id: 43, sides: 7, radius: 0.12, h: 0.30, mat: "gold" },
+    { id: 44, sides: 8, radius: 0.14, h: 0.15, mat: "stone" },
+    { id: 45, sides: 4, radius: 0.16, h: 0.20, mat: "wood" },
+    { id: 46, sides: 5, radius: 0.18, h: 0.25, mat: "metal" },
+    { id: 47, sides: 6, radius: 0.20, h: 0.30, mat: "gold" },
+    { id: 48, sides: 7, radius: 0.22, h: 0.15, mat: "stone" },
+    { id: 49, sides: 8, radius: 0.10, h: 0.20, mat: "wood" },
+    { id: 50, sides: 4, radius: 0.12, h: 0.25, mat: "metal" },
+    { id: 51, sides: 5, radius: 0.14, h: 0.30, mat: "gold" },
+    { id: 52, sides: 6, radius: 0.16, h: 0.15, mat: "stone" },
+    { id: 53, sides: 7, radius: 0.18, h: 0.20, mat: "wood" },
+    { id: 54, sides: 8, radius: 0.20, h: 0.25, mat: "metal" },
+    { id: 55, sides: 4, radius: 0.22, h: 0.30, mat: "gold" },
+    { id: 56, sides: 5, radius: 0.10, h: 0.15, mat: "stone" },
+    { id: 57, sides: 6, radius: 0.12, h: 0.20, mat: "wood" },
+    { id: 58, sides: 7, radius: 0.14, h: 0.25, mat: "metal" },
+    { id: 59, sides: 8, radius: 0.16, h: 0.30, mat: "gold" },
+  ],
+  applyOrnament(g, pattern, x, y, z) {
+    const mat = pattern.mat === 'gold' ? M.gold : pattern.mat === 'metal' ? M.metal : pattern.mat === 'wood' ? M.wood : M.stone;
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(pattern.radius * 0.6, pattern.radius, pattern.h, pattern.sides), mat);
+    mesh.position.set(x, y, z); mesh.castShadow = true; g.add(mesh); return mesh;
+  }
+};
+
+function scatterExtraVegetation() {
+  const flowerColors = [0xe05080, 0xf0d050, 0x50a0e0, 0xe08040, 0xd040d0];
+  for (let i = 0; i < 35; i++) {
+    const x = (Math.random() - 0.5) * 18;
+    const z = (Math.random() - 0.5) * 18;
+    if (Math.abs(x) < 3 && Math.abs(z) < 3) continue;
+    DetailLib.addFlower(scene, x, z, flowerColors[i % flowerColors.length]);
+  }
+  for (let i = 0; i < 14; i++) {
+    const x = (Math.random() - 0.5) * 16;
+    const z = (Math.random() - 0.5) * 16;
+    if (Math.abs(x) < 2.5 && Math.abs(z) < 2.5) continue;
+    DetailLib.addRockPile(scene, x, z, 3 + (i % 4));
+  }
+  for (let z = -3; z <= 3; z += 3) {
+    DetailLib.addLantern(scene, 1.2, 0.4, z);
+    DetailLib.addLantern(scene, -1.2, 0.4, z);
+  }
+  DetailLib.addBarrel(scene, 3.2, 0.15, 1.5);
+  DetailLib.addBarrel(scene, 3.5, 0.15, 1.8);
+  DetailLib.addCrate(scene, -3.2, 0.15, 0.5);
+  DetailLib.addCrate(scene, -3.5, 0.15, 0.8, 0.25);
+}
+
+function enhanceMaterialsWithNormals() {
+  if (typeof nmlGrass !== 'undefined' && M.grassA) {
+    M.grassA.normalMap = nmlGrass;
+    M.grassA.normalScale = new THREE.Vector2(0.4, 0.4);
+  }
+  if (typeof nmlStone !== 'undefined' && M.stone) {
+    M.stone.normalMap = nmlStone;
+    M.stone.normalScale = new THREE.Vector2(0.6, 0.6);
+    if (M.stoneDark) {
+      M.stoneDark.normalMap = nmlStone;
+      M.stoneDark.normalScale = new THREE.Vector2(0.5, 0.5);
+    }
+  }
+  if (typeof texCobble !== 'undefined') {
+    M.cobble = new THREE.MeshStandardMaterial({ map: texCobble, roughness: 0.75, metalness: 0.05 });
+  }
+  if (typeof texPlasterHQ !== 'undefined') {
+    M.plasterHQ = new THREE.MeshStandardMaterial({ map: texPlasterHQ, roughness: 0.72, metalness: 0.02 });
+  }
+}
+
+const BuildingStyleAtlas = {
+  cottage: { bodyRoughness: 0.55, roofPitch: 0.32, windowCount: 3, trimColor: 0x8a6a40, detailDensity: 0.68 },
+  keep: { bodyRoughness: 0.48, roofPitch: 0.28, windowCount: 5, trimColor: 0x7a6a50, detailDensity: 0.58 },
+  tower: { bodyRoughness: 0.50, roofPitch: 0.40, windowCount: 2, trimColor: 0x6a7a80, detailDensity: 0.76 },
+  warehouse: { bodyRoughness: 0.70, roofPitch: 0.25, windowCount: 4, trimColor: 0x9a7a50, detailDensity: 0.56 },
+  forge: { bodyRoughness: 0.60, roofPitch: 0.35, windowCount: 2, trimColor: 0x5a4a3a, detailDensity: 0.92 },
+  market: { bodyRoughness: 0.65, roofPitch: 0.30, windowCount: 6, trimColor: 0xb08a50, detailDensity: 0.94 },
+  chapel: { bodyRoughness: 0.45, roofPitch: 0.50, windowCount: 4, trimColor: 0xd0c8b0, detailDensity: 0.64 },
+  gatehouse: { bodyRoughness: 0.52, roofPitch: 0.38, windowCount: 3, trimColor: 0x8a8a90, detailDensity: 0.90 },
+  barracks_v2: { bodyRoughness: 0.58, roofPitch: 0.33, windowCount: 3, trimColor: 0xa06838, detailDensity: 0.90 },
+  mine_frame: { bodyRoughness: 0.62, roofPitch: 0.20, windowCount: 1, trimColor: 0x2a6a70, detailDensity: 0.60 },
+};
+const ParticleProfiles = {
+  ember: { count: 8, life: 30, speed: 0.20, size: 0.020, gravity: 0.000, color: 0xff6000 },
+  smoke: { count: 11, life: 40, speed: 0.28, size: 0.030, gravity: 0.001, color: 0xef5000 },
+  leaf: { count: 14, life: 50, speed: 0.36, size: 0.040, gravity: 0.002, color: 0xdf4000 },
+  spark: { count: 17, life: 60, speed: 0.44, size: 0.050, gravity: 0.003, color: 0xcf3000 },
+  dust: { count: 20, life: 70, speed: 0.52, size: 0.060, gravity: 0.004, color: 0xbf2000 },
+  pollen: { count: 23, life: 80, speed: 0.60, size: 0.070, gravity: 0.005, color: 0xaf1000 },
+  ash: { count: 26, life: 90, speed: 0.68, size: 0.080, gravity: 0.006, color: 0x9f0000 },
+  glow: { count: 29, life: 100, speed: 0.76, size: 0.090, gravity: 0.007, color: 0x8ef000 },
+};
+const MeshSegmentCatalog = [
+  { seg: 0, kind: "ledge", w: 0.30, h: 0.04, d: 0.20, yOff: 0.10, matKey: "stone" },
+  { seg: 1, kind: "trim", w: 0.38, h: 0.06, d: 0.25, yOff: 0.22, matKey: "wood" },
+  { seg: 2, kind: "sill", w: 0.46, h: 0.08, d: 0.30, yOff: 0.34, matKey: "metal" },
+  { seg: 3, kind: "lintel", w: 0.54, h: 0.10, d: 0.35, yOff: 0.46, matKey: "roof" },
+  { seg: 4, kind: "cornice", w: 0.62, h: 0.12, d: 0.40, yOff: 0.58, matKey: "plaster" },
+  { seg: 5, kind: "plinth", w: 0.70, h: 0.04, d: 0.45, yOff: 0.70, matKey: "stone" },
+  { seg: 6, kind: "band", w: 0.78, h: 0.06, d: 0.50, yOff: 0.10, matKey: "wood" },
+  { seg: 7, kind: "cap", w: 0.86, h: 0.08, d: 0.20, yOff: 0.22, matKey: "metal" },
+  { seg: 8, kind: "ledge", w: 0.94, h: 0.10, d: 0.25, yOff: 0.34, matKey: "roof" },
+  { seg: 9, kind: "trim", w: 1.02, h: 0.12, d: 0.30, yOff: 0.46, matKey: "plaster" },
+  { seg: 10, kind: "sill", w: 0.30, h: 0.04, d: 0.35, yOff: 0.58, matKey: "stone" },
+  { seg: 11, kind: "lintel", w: 0.38, h: 0.06, d: 0.40, yOff: 0.70, matKey: "wood" },
+  { seg: 12, kind: "cornice", w: 0.46, h: 0.08, d: 0.45, yOff: 0.10, matKey: "metal" },
+  { seg: 13, kind: "plinth", w: 0.54, h: 0.10, d: 0.50, yOff: 0.22, matKey: "roof" },
+  { seg: 14, kind: "band", w: 0.62, h: 0.12, d: 0.20, yOff: 0.34, matKey: "plaster" },
+  { seg: 15, kind: "cap", w: 0.70, h: 0.04, d: 0.25, yOff: 0.46, matKey: "stone" },
+  { seg: 16, kind: "ledge", w: 0.78, h: 0.06, d: 0.30, yOff: 0.58, matKey: "wood" },
+  { seg: 17, kind: "trim", w: 0.86, h: 0.08, d: 0.35, yOff: 0.70, matKey: "metal" },
+  { seg: 18, kind: "sill", w: 0.94, h: 0.10, d: 0.40, yOff: 0.10, matKey: "roof" },
+  { seg: 19, kind: "lintel", w: 1.02, h: 0.12, d: 0.45, yOff: 0.22, matKey: "plaster" },
+  { seg: 20, kind: "cornice", w: 0.30, h: 0.04, d: 0.50, yOff: 0.34, matKey: "stone" },
+  { seg: 21, kind: "plinth", w: 0.38, h: 0.06, d: 0.20, yOff: 0.46, matKey: "wood" },
+  { seg: 22, kind: "band", w: 0.46, h: 0.08, d: 0.25, yOff: 0.58, matKey: "metal" },
+  { seg: 23, kind: "cap", w: 0.54, h: 0.10, d: 0.30, yOff: 0.70, matKey: "roof" },
+  { seg: 24, kind: "ledge", w: 0.62, h: 0.12, d: 0.35, yOff: 0.10, matKey: "plaster" },
+  { seg: 25, kind: "trim", w: 0.70, h: 0.04, d: 0.40, yOff: 0.22, matKey: "stone" },
+  { seg: 26, kind: "sill", w: 0.78, h: 0.06, d: 0.45, yOff: 0.34, matKey: "wood" },
+  { seg: 27, kind: "lintel", w: 0.86, h: 0.08, d: 0.50, yOff: 0.46, matKey: "metal" },
+  { seg: 28, kind: "cornice", w: 0.94, h: 0.10, d: 0.20, yOff: 0.58, matKey: "roof" },
+  { seg: 29, kind: "plinth", w: 1.02, h: 0.12, d: 0.25, yOff: 0.70, matKey: "plaster" },
+  { seg: 30, kind: "band", w: 0.30, h: 0.04, d: 0.30, yOff: 0.10, matKey: "stone" },
+  { seg: 31, kind: "cap", w: 0.38, h: 0.06, d: 0.35, yOff: 0.22, matKey: "wood" },
+  { seg: 32, kind: "ledge", w: 0.46, h: 0.08, d: 0.40, yOff: 0.34, matKey: "metal" },
+  { seg: 33, kind: "trim", w: 0.54, h: 0.10, d: 0.45, yOff: 0.46, matKey: "roof" },
+  { seg: 34, kind: "sill", w: 0.62, h: 0.12, d: 0.50, yOff: 0.58, matKey: "plaster" },
+  { seg: 35, kind: "lintel", w: 0.70, h: 0.04, d: 0.20, yOff: 0.70, matKey: "stone" },
+  { seg: 36, kind: "cornice", w: 0.78, h: 0.06, d: 0.25, yOff: 0.10, matKey: "wood" },
+  { seg: 37, kind: "plinth", w: 0.86, h: 0.08, d: 0.30, yOff: 0.22, matKey: "metal" },
+  { seg: 38, kind: "band", w: 0.94, h: 0.10, d: 0.35, yOff: 0.34, matKey: "roof" },
+  { seg: 39, kind: "cap", w: 1.02, h: 0.12, d: 0.40, yOff: 0.46, matKey: "plaster" },
+  { seg: 40, kind: "ledge", w: 0.30, h: 0.04, d: 0.45, yOff: 0.58, matKey: "stone" },
+  { seg: 41, kind: "trim", w: 0.38, h: 0.06, d: 0.50, yOff: 0.70, matKey: "wood" },
+  { seg: 42, kind: "sill", w: 0.46, h: 0.08, d: 0.20, yOff: 0.10, matKey: "metal" },
+  { seg: 43, kind: "lintel", w: 0.54, h: 0.10, d: 0.25, yOff: 0.22, matKey: "roof" },
+  { seg: 44, kind: "cornice", w: 0.62, h: 0.12, d: 0.30, yOff: 0.34, matKey: "plaster" },
+  { seg: 45, kind: "plinth", w: 0.70, h: 0.04, d: 0.35, yOff: 0.46, matKey: "stone" },
+  { seg: 46, kind: "band", w: 0.78, h: 0.06, d: 0.40, yOff: 0.58, matKey: "wood" },
+  { seg: 47, kind: "cap", w: 0.86, h: 0.08, d: 0.45, yOff: 0.70, matKey: "metal" },
+  { seg: 48, kind: "ledge", w: 0.94, h: 0.10, d: 0.50, yOff: 0.10, matKey: "roof" },
+  { seg: 49, kind: "trim", w: 1.02, h: 0.12, d: 0.20, yOff: 0.22, matKey: "plaster" },
+  { seg: 50, kind: "sill", w: 0.30, h: 0.04, d: 0.25, yOff: 0.34, matKey: "stone" },
+  { seg: 51, kind: "lintel", w: 0.38, h: 0.06, d: 0.30, yOff: 0.46, matKey: "wood" },
+  { seg: 52, kind: "cornice", w: 0.46, h: 0.08, d: 0.35, yOff: 0.58, matKey: "metal" },
+  { seg: 53, kind: "plinth", w: 0.54, h: 0.10, d: 0.40, yOff: 0.70, matKey: "roof" },
+  { seg: 54, kind: "band", w: 0.62, h: 0.12, d: 0.45, yOff: 0.10, matKey: "plaster" },
+  { seg: 55, kind: "cap", w: 0.70, h: 0.04, d: 0.50, yOff: 0.22, matKey: "stone" },
+  { seg: 56, kind: "ledge", w: 0.78, h: 0.06, d: 0.20, yOff: 0.34, matKey: "wood" },
+  { seg: 57, kind: "trim", w: 0.86, h: 0.08, d: 0.25, yOff: 0.46, matKey: "metal" },
+  { seg: 58, kind: "sill", w: 0.94, h: 0.10, d: 0.30, yOff: 0.58, matKey: "roof" },
+  { seg: 59, kind: "lintel", w: 1.02, h: 0.12, d: 0.35, yOff: 0.70, matKey: "plaster" },
+  { seg: 60, kind: "cornice", w: 0.30, h: 0.04, d: 0.40, yOff: 0.10, matKey: "stone" },
+  { seg: 61, kind: "plinth", w: 0.38, h: 0.06, d: 0.45, yOff: 0.22, matKey: "wood" },
+  { seg: 62, kind: "band", w: 0.46, h: 0.08, d: 0.50, yOff: 0.34, matKey: "metal" },
+  { seg: 63, kind: "cap", w: 0.54, h: 0.10, d: 0.20, yOff: 0.46, matKey: "roof" },
+  { seg: 64, kind: "ledge", w: 0.62, h: 0.12, d: 0.25, yOff: 0.58, matKey: "plaster" },
+  { seg: 65, kind: "trim", w: 0.70, h: 0.04, d: 0.30, yOff: 0.70, matKey: "stone" },
+  { seg: 66, kind: "sill", w: 0.78, h: 0.06, d: 0.35, yOff: 0.10, matKey: "wood" },
+  { seg: 67, kind: "lintel", w: 0.86, h: 0.08, d: 0.40, yOff: 0.22, matKey: "metal" },
+  { seg: 68, kind: "cornice", w: 0.94, h: 0.10, d: 0.45, yOff: 0.34, matKey: "roof" },
+  { seg: 69, kind: "plinth", w: 1.02, h: 0.12, d: 0.50, yOff: 0.46, matKey: "plaster" },
+  { seg: 70, kind: "band", w: 0.30, h: 0.04, d: 0.20, yOff: 0.58, matKey: "stone" },
+  { seg: 71, kind: "cap", w: 0.38, h: 0.06, d: 0.25, yOff: 0.70, matKey: "wood" },
+  { seg: 72, kind: "ledge", w: 0.46, h: 0.08, d: 0.30, yOff: 0.10, matKey: "metal" },
+  { seg: 73, kind: "trim", w: 0.54, h: 0.10, d: 0.35, yOff: 0.22, matKey: "roof" },
+  { seg: 74, kind: "sill", w: 0.62, h: 0.12, d: 0.40, yOff: 0.34, matKey: "plaster" },
+  { seg: 75, kind: "lintel", w: 0.70, h: 0.04, d: 0.45, yOff: 0.46, matKey: "stone" },
+  { seg: 76, kind: "cornice", w: 0.78, h: 0.06, d: 0.50, yOff: 0.58, matKey: "wood" },
+  { seg: 77, kind: "plinth", w: 0.86, h: 0.08, d: 0.20, yOff: 0.70, matKey: "metal" },
+  { seg: 78, kind: "band", w: 0.94, h: 0.10, d: 0.25, yOff: 0.10, matKey: "roof" },
+  { seg: 79, kind: "cap", w: 1.02, h: 0.12, d: 0.30, yOff: 0.22, matKey: "plaster" },
+];
+
+function applyMeshSegments(g, catalogSlice, baseY) {
+  catalogSlice.forEach((seg, idx) => {
+    const mat = M[seg.matKey] || M.stone;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(seg.w, seg.h, seg.d), mat);
+    mesh.position.set((idx % 3 - 1) * 0.15, baseY + seg.yOff, 0);
+    if (idx % 4 === 0) mesh.castShadow = true;
+    g.add(mesh);
+  });
+}
+
+
+// ===================== v6.1.0 EXTENDED GRAPHICS DATA =====================
+const DayColorRamps = {
+  h00: { sky: 0xff64b4, sun: 0xff5a7d, hemi: 0.35, exposure: 1.00 },
+  h01: { sky: 0xf66cb7, sun: 0xf66180, hemi: 0.38, exposure: 1.03 },
+  h02: { sky: 0xee74ba, sun: 0xee6882, hemi: 0.40, exposure: 1.06 },
+  h03: { sky: 0xe57dbd, sun: 0xe57084, hemi: 0.42, exposure: 1.09 },
+  h04: { sky: 0xdd85c0, sun: 0xdd7786, hemi: 0.45, exposure: 1.12 },
+  h05: { sky: 0xd48dc3, sun: 0xd47e88, hemi: 0.47, exposure: 1.15 },
+  h06: { sky: 0xcc96c6, sun: 0xcc878a, hemi: 0.50, exposure: 1.18 },
+  h07: { sky: 0xc39ec9, sun: 0xc38e8c, hemi: 0.53, exposure: 1.20 },
+  h08: { sky: 0xbba6cd, sun: 0xbb958f, hemi: 0.55, exposure: 1.23 },
+  h09: { sky: 0xb2afd0, sun: 0xb29d91, hemi: 0.57, exposure: 1.26 },
+  h10: { sky: 0xaab7d3, sun: 0xaaa493, hemi: 0.60, exposure: 1.29 },
+  h11: { sky: 0xa1bfd6, sun: 0xa1ab95, hemi: 0.62, exposure: 1.32 },
+  h12: { sky: 0x99c8d9, sun: 0x99b497, hemi: 0.65, exposure: 1.35 },
+  h13: { sky: 0xa1bfd6, sun: 0xa1ab95, hemi: 0.62, exposure: 1.32 },
+  h14: { sky: 0xaab7d3, sun: 0xaaa493, hemi: 0.60, exposure: 1.29 },
+  h15: { sky: 0xb2afd0, sun: 0xb29d91, hemi: 0.57, exposure: 1.26 },
+  h16: { sky: 0xbba6cd, sun: 0xbb958f, hemi: 0.55, exposure: 1.23 },
+  h17: { sky: 0xc39ec9, sun: 0xc38e8c, hemi: 0.52, exposure: 1.20 },
+  h18: { sky: 0xcc96c6, sun: 0xcc878a, hemi: 0.50, exposure: 1.18 },
+  h19: { sky: 0xd48dc3, sun: 0xd47e88, hemi: 0.47, exposure: 1.15 },
+  h20: { sky: 0xdd85c0, sun: 0xdd7786, hemi: 0.45, exposure: 1.12 },
+  h21: { sky: 0xe57dbd, sun: 0xe57084, hemi: 0.42, exposure: 1.09 },
+  h22: { sky: 0xee74ba, sun: 0xee6882, hemi: 0.40, exposure: 1.06 },
+  h23: { sky: 0xf66cb7, sun: 0xf66180, hemi: 0.37, exposure: 1.03 },
+};
+const DecorationUV = [
+  { u0: 0.000, v0: 0.000, u1: 0.100, v1: 0.100, rot: 0.00, scale: 0.50 },
+  { u0: 0.100, v0: 0.000, u1: 0.150, v1: 0.160, rot: 0.79, scale: 0.65 },
+  { u0: 0.200, v0: 0.000, u1: 0.200, v1: 0.220, rot: 1.57, scale: 0.80 },
+  { u0: 0.300, v0: 0.000, u1: 0.250, v1: 0.280, rot: 2.35, scale: 0.95 },
+  { u0: 0.400, v0: 0.000, u1: 0.300, v1: 0.340, rot: 3.14, scale: 1.10 },
+  { u0: 0.500, v0: 0.000, u1: 0.350, v1: 0.100, rot: 3.93, scale: 1.25 },
+  { u0: 0.600, v0: 0.000, u1: 0.400, v1: 0.160, rot: 4.71, scale: 0.50 },
+  { u0: 0.700, v0: 0.000, u1: 0.100, v1: 0.220, rot: 5.50, scale: 0.65 },
+  { u0: 0.800, v0: 0.000, u1: 0.150, v1: 0.280, rot: 0.00, scale: 0.80 },
+  { u0: 0.900, v0: 0.000, u1: 0.200, v1: 0.340, rot: 0.79, scale: 0.95 },
+  { u0: 0.000, v0: 0.100, u1: 0.250, v1: 0.100, rot: 1.57, scale: 1.10 },
+  { u0: 0.100, v0: 0.100, u1: 0.300, v1: 0.160, rot: 2.35, scale: 1.25 },
+  { u0: 0.200, v0: 0.100, u1: 0.350, v1: 0.220, rot: 3.14, scale: 0.50 },
+  { u0: 0.300, v0: 0.100, u1: 0.400, v1: 0.280, rot: 3.93, scale: 0.65 },
+  { u0: 0.400, v0: 0.100, u1: 0.100, v1: 0.340, rot: 4.71, scale: 0.80 },
+  { u0: 0.500, v0: 0.100, u1: 0.150, v1: 0.100, rot: 5.50, scale: 0.95 },
+  { u0: 0.600, v0: 0.100, u1: 0.200, v1: 0.160, rot: 0.00, scale: 1.10 },
+  { u0: 0.700, v0: 0.100, u1: 0.250, v1: 0.220, rot: 0.79, scale: 1.25 },
+  { u0: 0.800, v0: 0.100, u1: 0.300, v1: 0.280, rot: 1.57, scale: 0.50 },
+  { u0: 0.900, v0: 0.100, u1: 0.350, v1: 0.340, rot: 2.35, scale: 0.65 },
+  { u0: 0.000, v0: 0.200, u1: 0.400, v1: 0.100, rot: 3.14, scale: 0.80 },
+  { u0: 0.100, v0: 0.200, u1: 0.100, v1: 0.160, rot: 3.93, scale: 0.95 },
+  { u0: 0.200, v0: 0.200, u1: 0.150, v1: 0.220, rot: 4.71, scale: 1.10 },
+  { u0: 0.300, v0: 0.200, u1: 0.200, v1: 0.280, rot: 5.50, scale: 1.25 },
+  { u0: 0.400, v0: 0.200, u1: 0.250, v1: 0.340, rot: 0.00, scale: 0.50 },
+  { u0: 0.500, v0: 0.200, u1: 0.300, v1: 0.100, rot: 0.79, scale: 0.65 },
+  { u0: 0.600, v0: 0.200, u1: 0.350, v1: 0.160, rot: 1.57, scale: 0.80 },
+  { u0: 0.700, v0: 0.200, u1: 0.400, v1: 0.220, rot: 2.35, scale: 0.95 },
+  { u0: 0.800, v0: 0.200, u1: 0.100, v1: 0.280, rot: 3.14, scale: 1.10 },
+  { u0: 0.900, v0: 0.200, u1: 0.150, v1: 0.340, rot: 3.93, scale: 1.25 },
+  { u0: 0.000, v0: 0.300, u1: 0.200, v1: 0.100, rot: 4.71, scale: 0.50 },
+  { u0: 0.100, v0: 0.300, u1: 0.250, v1: 0.160, rot: 5.50, scale: 0.65 },
+  { u0: 0.200, v0: 0.300, u1: 0.300, v1: 0.220, rot: 0.00, scale: 0.80 },
+  { u0: 0.300, v0: 0.300, u1: 0.350, v1: 0.280, rot: 0.79, scale: 0.95 },
+  { u0: 0.400, v0: 0.300, u1: 0.400, v1: 0.340, rot: 1.57, scale: 1.10 },
+  { u0: 0.500, v0: 0.300, u1: 0.100, v1: 0.100, rot: 2.35, scale: 1.25 },
+  { u0: 0.600, v0: 0.300, u1: 0.150, v1: 0.160, rot: 3.14, scale: 0.50 },
+  { u0: 0.700, v0: 0.300, u1: 0.200, v1: 0.220, rot: 3.93, scale: 0.65 },
+  { u0: 0.800, v0: 0.300, u1: 0.250, v1: 0.280, rot: 4.71, scale: 0.80 },
+  { u0: 0.900, v0: 0.300, u1: 0.300, v1: 0.340, rot: 5.50, scale: 0.95 },
+  { u0: 0.000, v0: 0.400, u1: 0.350, v1: 0.100, rot: 0.00, scale: 1.10 },
+  { u0: 0.100, v0: 0.400, u1: 0.400, v1: 0.160, rot: 0.79, scale: 1.25 },
+  { u0: 0.200, v0: 0.400, u1: 0.100, v1: 0.220, rot: 1.57, scale: 0.50 },
+  { u0: 0.300, v0: 0.400, u1: 0.150, v1: 0.280, rot: 2.35, scale: 0.65 },
+  { u0: 0.400, v0: 0.400, u1: 0.200, v1: 0.340, rot: 3.14, scale: 0.80 },
+  { u0: 0.500, v0: 0.400, u1: 0.250, v1: 0.100, rot: 3.93, scale: 0.95 },
+  { u0: 0.600, v0: 0.400, u1: 0.300, v1: 0.160, rot: 4.71, scale: 1.10 },
+  { u0: 0.700, v0: 0.400, u1: 0.350, v1: 0.220, rot: 5.50, scale: 1.25 },
+  { u0: 0.800, v0: 0.400, u1: 0.400, v1: 0.280, rot: 0.00, scale: 0.50 },
+  { u0: 0.900, v0: 0.400, u1: 0.100, v1: 0.340, rot: 0.79, scale: 0.65 },
+  { u0: 0.000, v0: 0.500, u1: 0.150, v1: 0.100, rot: 1.57, scale: 0.80 },
+  { u0: 0.100, v0: 0.500, u1: 0.200, v1: 0.160, rot: 2.35, scale: 0.95 },
+  { u0: 0.200, v0: 0.500, u1: 0.250, v1: 0.220, rot: 3.14, scale: 1.10 },
+  { u0: 0.300, v0: 0.500, u1: 0.300, v1: 0.280, rot: 3.93, scale: 1.25 },
+  { u0: 0.400, v0: 0.500, u1: 0.350, v1: 0.340, rot: 4.71, scale: 0.50 },
+  { u0: 0.500, v0: 0.500, u1: 0.400, v1: 0.100, rot: 5.50, scale: 0.65 },
+  { u0: 0.600, v0: 0.500, u1: 0.100, v1: 0.160, rot: 0.00, scale: 0.80 },
+  { u0: 0.700, v0: 0.500, u1: 0.150, v1: 0.220, rot: 0.79, scale: 0.95 },
+  { u0: 0.800, v0: 0.500, u1: 0.200, v1: 0.280, rot: 1.57, scale: 1.10 },
+  { u0: 0.900, v0: 0.500, u1: 0.250, v1: 0.340, rot: 2.35, scale: 1.25 },
+  { u0: 0.000, v0: 0.600, u1: 0.300, v1: 0.100, rot: 3.14, scale: 0.50 },
+  { u0: 0.100, v0: 0.600, u1: 0.350, v1: 0.160, rot: 3.93, scale: 0.65 },
+  { u0: 0.200, v0: 0.600, u1: 0.400, v1: 0.220, rot: 4.71, scale: 0.80 },
+  { u0: 0.300, v0: 0.600, u1: 0.100, v1: 0.280, rot: 5.50, scale: 0.95 },
+  { u0: 0.400, v0: 0.600, u1: 0.150, v1: 0.340, rot: 0.00, scale: 1.10 },
+  { u0: 0.500, v0: 0.600, u1: 0.200, v1: 0.100, rot: 0.79, scale: 1.25 },
+  { u0: 0.600, v0: 0.600, u1: 0.250, v1: 0.160, rot: 1.57, scale: 0.50 },
+  { u0: 0.700, v0: 0.600, u1: 0.300, v1: 0.220, rot: 2.35, scale: 0.65 },
+  { u0: 0.800, v0: 0.600, u1: 0.350, v1: 0.280, rot: 3.14, scale: 0.80 },
+  { u0: 0.900, v0: 0.600, u1: 0.400, v1: 0.340, rot: 3.93, scale: 0.95 },
+  { u0: 0.000, v0: 0.700, u1: 0.100, v1: 0.100, rot: 4.71, scale: 1.10 },
+  { u0: 0.100, v0: 0.700, u1: 0.150, v1: 0.160, rot: 5.50, scale: 1.25 },
+  { u0: 0.200, v0: 0.700, u1: 0.200, v1: 0.220, rot: 0.00, scale: 0.50 },
+  { u0: 0.300, v0: 0.700, u1: 0.250, v1: 0.280, rot: 0.79, scale: 0.65 },
+  { u0: 0.400, v0: 0.700, u1: 0.300, v1: 0.340, rot: 1.57, scale: 0.80 },
+  { u0: 0.500, v0: 0.700, u1: 0.350, v1: 0.100, rot: 2.35, scale: 0.95 },
+  { u0: 0.600, v0: 0.700, u1: 0.400, v1: 0.160, rot: 3.14, scale: 1.10 },
+  { u0: 0.700, v0: 0.700, u1: 0.100, v1: 0.220, rot: 3.93, scale: 1.25 },
+  { u0: 0.800, v0: 0.700, u1: 0.150, v1: 0.280, rot: 4.71, scale: 0.50 },
+  { u0: 0.900, v0: 0.700, u1: 0.200, v1: 0.340, rot: 5.50, scale: 0.65 },
+  { u0: 0.000, v0: 0.800, u1: 0.250, v1: 0.100, rot: 0.00, scale: 0.80 },
+  { u0: 0.100, v0: 0.800, u1: 0.300, v1: 0.160, rot: 0.79, scale: 0.95 },
+  { u0: 0.200, v0: 0.800, u1: 0.350, v1: 0.220, rot: 1.57, scale: 1.10 },
+  { u0: 0.300, v0: 0.800, u1: 0.400, v1: 0.280, rot: 2.35, scale: 1.25 },
+  { u0: 0.400, v0: 0.800, u1: 0.100, v1: 0.340, rot: 3.14, scale: 0.50 },
+  { u0: 0.500, v0: 0.800, u1: 0.150, v1: 0.100, rot: 3.93, scale: 0.65 },
+  { u0: 0.600, v0: 0.800, u1: 0.200, v1: 0.160, rot: 4.71, scale: 0.80 },
+  { u0: 0.700, v0: 0.800, u1: 0.250, v1: 0.220, rot: 5.50, scale: 0.95 },
+  { u0: 0.800, v0: 0.800, u1: 0.300, v1: 0.280, rot: 0.00, scale: 1.10 },
+  { u0: 0.900, v0: 0.800, u1: 0.350, v1: 0.340, rot: 0.79, scale: 1.25 },
+  { u0: 0.000, v0: 0.900, u1: 0.400, v1: 0.100, rot: 1.57, scale: 0.50 },
+  { u0: 0.100, v0: 0.900, u1: 0.100, v1: 0.160, rot: 2.35, scale: 0.65 },
+  { u0: 0.200, v0: 0.900, u1: 0.150, v1: 0.220, rot: 3.14, scale: 0.80 },
+  { u0: 0.300, v0: 0.900, u1: 0.200, v1: 0.280, rot: 3.93, scale: 0.95 },
+  { u0: 0.400, v0: 0.900, u1: 0.250, v1: 0.340, rot: 4.71, scale: 1.10 },
+  { u0: 0.500, v0: 0.900, u1: 0.300, v1: 0.100, rot: 5.50, scale: 1.25 },
+  { u0: 0.600, v0: 0.900, u1: 0.350, v1: 0.160, rot: 0.00, scale: 0.50 },
+  { u0: 0.700, v0: 0.900, u1: 0.400, v1: 0.220, rot: 0.79, scale: 0.65 },
+  { u0: 0.800, v0: 0.900, u1: 0.100, v1: 0.280, rot: 1.57, scale: 0.80 },
+  { u0: 0.900, v0: 0.900, u1: 0.150, v1: 0.340, rot: 2.35, scale: 0.95 },
+];
+const WorldPropLayout = [
+  { prop: "barrel", x: -10.00, z: -10.00, rot: 0.00, scale: 0.70 },
+  { prop: "crate", x: -8.30, z: -7.70, rot: 0.70, scale: 0.80 },
+  { prop: "lantern", x: -6.60, z: -5.40, rot: 1.40, scale: 0.90 },
+  { prop: "flower", x: -4.90, z: -3.10, rot: 2.10, scale: 1.00 },
+  { prop: "rock", x: -3.20, z: -0.80, rot: 2.80, scale: 1.10 },
+  { prop: "banner", x: -1.50, z: 1.50, rot: 3.50, scale: 0.70 },
+  { prop: "fence", x: 0.20, z: 3.80, rot: 4.20, scale: 0.80 },
+  { prop: "bush", x: 1.90, z: 6.10, rot: 4.90, scale: 0.90 },
+  { prop: "barrel", x: 3.60, z: 8.40, rot: 5.60, scale: 1.00 },
+  { prop: "crate", x: 5.30, z: -9.30, rot: 0.02, scale: 1.10 },
+  { prop: "lantern", x: 7.00, z: -7.00, rot: 0.72, scale: 0.70 },
+  { prop: "flower", x: 8.70, z: -4.70, rot: 1.42, scale: 0.80 },
+  { prop: "rock", x: -9.60, z: -2.40, rot: 2.12, scale: 0.90 },
+  { prop: "banner", x: -7.90, z: -0.10, rot: 2.82, scale: 1.00 },
+  { prop: "fence", x: -6.20, z: 2.20, rot: 3.52, scale: 1.10 },
+  { prop: "bush", x: -4.50, z: 4.50, rot: 4.22, scale: 0.70 },
+  { prop: "barrel", x: -2.80, z: 6.80, rot: 4.92, scale: 0.80 },
+  { prop: "crate", x: -1.10, z: 9.10, rot: 5.62, scale: 0.90 },
+  { prop: "lantern", x: 0.60, z: -8.60, rot: 0.04, scale: 1.00 },
+  { prop: "flower", x: 2.30, z: -6.30, rot: 0.74, scale: 1.10 },
+  { prop: "rock", x: 4.00, z: -4.00, rot: 1.44, scale: 0.70 },
+  { prop: "banner", x: 5.70, z: -1.70, rot: 2.14, scale: 0.80 },
+  { prop: "fence", x: 7.40, z: 0.60, rot: 2.84, scale: 0.90 },
+  { prop: "bush", x: 9.10, z: 2.90, rot: 3.54, scale: 1.00 },
+  { prop: "barrel", x: -9.20, z: 5.20, rot: 4.24, scale: 1.10 },
+  { prop: "crate", x: -7.50, z: 7.50, rot: 4.94, scale: 0.70 },
+  { prop: "lantern", x: -5.80, z: 9.80, rot: 5.64, scale: 0.80 },
+  { prop: "flower", x: -4.10, z: -7.90, rot: 0.06, scale: 0.90 },
+  { prop: "rock", x: -2.40, z: -5.60, rot: 0.76, scale: 1.00 },
+  { prop: "banner", x: -0.70, z: -3.30, rot: 1.46, scale: 1.10 },
+  { prop: "fence", x: 1.00, z: -1.00, rot: 2.16, scale: 0.70 },
+  { prop: "bush", x: 2.70, z: 1.30, rot: 2.86, scale: 0.80 },
+  { prop: "barrel", x: 4.40, z: 3.60, rot: 3.56, scale: 0.90 },
+  { prop: "crate", x: 6.10, z: 5.90, rot: 4.26, scale: 1.00 },
+  { prop: "lantern", x: 7.80, z: 8.20, rot: 4.96, scale: 1.10 },
+  { prop: "flower", x: 9.50, z: -9.50, rot: 5.66, scale: 0.70 },
+  { prop: "rock", x: -8.80, z: -7.20, rot: 0.08, scale: 0.80 },
+  { prop: "banner", x: -7.10, z: -4.90, rot: 0.78, scale: 0.90 },
+  { prop: "fence", x: -5.40, z: -2.60, rot: 1.48, scale: 1.00 },
+  { prop: "bush", x: -3.70, z: -0.30, rot: 2.18, scale: 1.10 },
+  { prop: "barrel", x: -2.00, z: 2.00, rot: 2.88, scale: 0.70 },
+  { prop: "crate", x: -0.30, z: 4.30, rot: 3.58, scale: 0.80 },
+  { prop: "lantern", x: 1.40, z: 6.60, rot: 4.28, scale: 0.90 },
+  { prop: "flower", x: 3.10, z: 8.90, rot: 4.98, scale: 1.00 },
+  { prop: "rock", x: 4.80, z: -8.80, rot: 5.68, scale: 1.10 },
+  { prop: "banner", x: 6.50, z: -6.50, rot: 0.10, scale: 0.70 },
+  { prop: "fence", x: 8.20, z: -4.20, rot: 0.80, scale: 0.80 },
+  { prop: "bush", x: 9.90, z: -1.90, rot: 1.50, scale: 0.90 },
+  { prop: "barrel", x: -8.40, z: 0.40, rot: 2.20, scale: 1.00 },
+  { prop: "crate", x: -6.70, z: 2.70, rot: 2.90, scale: 1.10 },
+  { prop: "lantern", x: -5.00, z: 5.00, rot: 3.60, scale: 0.70 },
+  { prop: "flower", x: -3.30, z: 7.30, rot: 4.30, scale: 0.80 },
+  { prop: "rock", x: -1.60, z: 9.60, rot: 5.00, scale: 0.90 },
+  { prop: "banner", x: 0.10, z: -8.10, rot: 5.70, scale: 1.00 },
+  { prop: "fence", x: 1.80, z: -5.80, rot: 0.12, scale: 1.10 },
+  { prop: "bush", x: 3.50, z: -3.50, rot: 0.82, scale: 0.70 },
+  { prop: "barrel", x: 5.20, z: -1.20, rot: 1.52, scale: 0.80 },
+  { prop: "crate", x: 6.90, z: 1.10, rot: 2.22, scale: 0.90 },
+  { prop: "lantern", x: 8.60, z: 3.40, rot: 2.92, scale: 1.00 },
+  { prop: "flower", x: -9.70, z: 5.70, rot: 3.62, scale: 1.10 },
+  { prop: "rock", x: -8.00, z: 8.00, rot: 4.32, scale: 0.70 },
+  { prop: "banner", x: -6.30, z: -9.70, rot: 5.02, scale: 0.80 },
+  { prop: "fence", x: -4.60, z: -7.40, rot: 5.72, scale: 0.90 },
+  { prop: "bush", x: -2.90, z: -5.10, rot: 0.14, scale: 1.00 },
+  { prop: "barrel", x: -1.20, z: -2.80, rot: 0.84, scale: 1.10 },
+  { prop: "crate", x: 0.50, z: -0.50, rot: 1.54, scale: 0.70 },
+  { prop: "lantern", x: 2.20, z: 1.80, rot: 2.24, scale: 0.80 },
+  { prop: "flower", x: 3.90, z: 4.10, rot: 2.94, scale: 0.90 },
+  { prop: "rock", x: 5.60, z: 6.40, rot: 3.64, scale: 1.00 },
+  { prop: "banner", x: 7.30, z: 8.70, rot: 4.34, scale: 1.10 },
+  { prop: "fence", x: 9.00, z: -9.00, rot: 5.04, scale: 0.70 },
+  { prop: "bush", x: -9.30, z: -6.70, rot: 5.74, scale: 0.80 },
+  { prop: "barrel", x: -7.60, z: -4.40, rot: 0.16, scale: 0.90 },
+  { prop: "crate", x: -5.90, z: -2.10, rot: 0.86, scale: 1.00 },
+  { prop: "lantern", x: -4.20, z: 0.20, rot: 1.56, scale: 1.10 },
+  { prop: "flower", x: -2.50, z: 2.50, rot: 2.26, scale: 0.70 },
+  { prop: "rock", x: -0.80, z: 4.80, rot: 2.96, scale: 0.80 },
+  { prop: "banner", x: 0.90, z: 7.10, rot: 3.66, scale: 0.90 },
+  { prop: "fence", x: 2.60, z: 9.40, rot: 4.36, scale: 1.00 },
+  { prop: "bush", x: 4.30, z: -8.30, rot: 5.06, scale: 1.10 },
+  { prop: "barrel", x: 6.00, z: -6.00, rot: 5.76, scale: 0.70 },
+  { prop: "crate", x: 7.70, z: -3.70, rot: 0.18, scale: 0.80 },
+  { prop: "lantern", x: 9.40, z: -1.40, rot: 0.88, scale: 0.90 },
+  { prop: "flower", x: -8.90, z: 0.90, rot: 1.58, scale: 1.00 },
+  { prop: "rock", x: -7.20, z: 3.20, rot: 2.28, scale: 1.10 },
+  { prop: "banner", x: -5.50, z: 5.50, rot: 2.98, scale: 0.70 },
+  { prop: "fence", x: -3.80, z: 7.80, rot: 3.68, scale: 0.80 },
+  { prop: "bush", x: -2.10, z: -9.90, rot: 4.38, scale: 0.90 },
+  { prop: "barrel", x: -0.40, z: -7.60, rot: 5.08, scale: 1.00 },
+  { prop: "crate", x: 1.30, z: -5.30, rot: 5.78, scale: 1.10 },
+  { prop: "lantern", x: 3.00, z: -3.00, rot: 0.20, scale: 0.70 },
+  { prop: "flower", x: 4.70, z: -0.70, rot: 0.90, scale: 0.80 },
+  { prop: "rock", x: 6.40, z: 1.60, rot: 1.60, scale: 0.90 },
+  { prop: "banner", x: 8.10, z: 3.90, rot: 2.30, scale: 1.00 },
+  { prop: "fence", x: 9.80, z: 6.20, rot: 3.00, scale: 1.10 },
+  { prop: "bush", x: -8.50, z: 8.50, rot: 3.70, scale: 0.70 },
+  { prop: "barrel", x: -6.80, z: -9.20, rot: 4.40, scale: 0.80 },
+  { prop: "crate", x: -5.10, z: -6.90, rot: 5.10, scale: 0.90 },
+  { prop: "lantern", x: -3.40, z: -4.60, rot: 5.80, scale: 1.00 },
+  { prop: "flower", x: -1.70, z: -2.30, rot: 0.22, scale: 1.10 },
+  { prop: "rock", x: 0.00, z: -0.00, rot: 0.92, scale: 0.70 },
+  { prop: "banner", x: 1.70, z: 2.30, rot: 1.62, scale: 0.80 },
+  { prop: "fence", x: 3.40, z: 4.60, rot: 2.32, scale: 0.90 },
+  { prop: "bush", x: 5.10, z: 6.90, rot: 3.02, scale: 1.00 },
+  { prop: "barrel", x: 6.80, z: 9.20, rot: 3.72, scale: 1.10 },
+  { prop: "crate", x: 8.50, z: -8.50, rot: 4.42, scale: 0.70 },
+  { prop: "lantern", x: -9.80, z: -6.20, rot: 5.12, scale: 0.80 },
+  { prop: "flower", x: -8.10, z: -3.90, rot: 5.82, scale: 0.90 },
+  { prop: "rock", x: -6.40, z: -1.60, rot: 0.24, scale: 1.00 },
+  { prop: "banner", x: -4.70, z: 0.70, rot: 0.94, scale: 1.10 },
+  { prop: "fence", x: -3.00, z: 3.00, rot: 1.64, scale: 0.70 },
+  { prop: "bush", x: -1.30, z: 5.30, rot: 2.34, scale: 0.80 },
+  { prop: "barrel", x: 0.40, z: 7.60, rot: 3.04, scale: 0.90 },
+  { prop: "crate", x: 2.10, z: 9.90, rot: 3.74, scale: 1.00 },
+  { prop: "lantern", x: 3.80, z: -7.80, rot: 4.44, scale: 1.10 },
+  { prop: "flower", x: 5.50, z: -5.50, rot: 5.14, scale: 0.70 },
+  { prop: "rock", x: 7.20, z: -3.20, rot: 5.84, scale: 0.80 },
+  { prop: "banner", x: 8.90, z: -0.90, rot: 0.26, scale: 0.90 },
+  { prop: "fence", x: -9.40, z: 1.40, rot: 0.96, scale: 1.00 },
+  { prop: "bush", x: -7.70, z: 3.70, rot: 1.66, scale: 1.10 },
+];
+
+function spawnWorldProps() {
+  WorldPropLayout.forEach((p, i) => {
+    if (Math.abs(p.x) < 2.2 && Math.abs(p.z) < 2.2) return;
+    if (Math.abs(p.z + 4.3) < 2 && Math.abs(p.x) < 2.5) return; // camp
+    try {
+      if (p.prop === 'barrel') DetailLib.addBarrel(scene, p.x, 0.15 * p.scale, p.z);
+      else if (p.prop === 'crate') DetailLib.addCrate(scene, p.x, 0.15 * p.scale, p.z, 0.28 * p.scale);
+      else if (p.prop === 'lantern' && i % 3 === 0) DetailLib.addLantern(scene, p.x, 0.35, p.z);
+      else if (p.prop === 'flower') DetailLib.addFlower(scene, p.x, p.z);
+      else if (p.prop === 'rock') DetailLib.addRockPile(scene, p.x, p.z, 2);
+    } catch (e) {}
+  });
+}
+const AnimCurves = {
+  flagWave: [0.9546, 0.9042, 0.8377, 0.7578, 0.6675, 0.5706, 0.4708, 0.3722, 0.2787, 0.1941, 0.1216, 0.0642, 0.0242, 0.0032, 0.0019, 0.0205, 0.0583, 0.1136, 0.1844, 0.2677, 0.3603, 0.4585, 0.5583, 0.6558, 0.7471, 0.8285, 0.8968, 0.9494, 0.9840, 0.9993, 0.9947, 0.9704],
+  fireFlicker: [0.0205, 0.0583, 0.1136, 0.1844, 0.2677, 0.3603, 0.4585, 0.5583, 0.6558, 0.7471, 0.8285, 0.8968, 0.9494, 0.9840, 0.9993, 0.9947, 0.9704, 0.9273, 0.8672, 0.7925, 0.7061, 0.6114, 0.5124, 0.4128, 0.3168, 0.2280, 0.1501, 0.0861, 0.0386, 0.0095, 0.0000, 0.0104],
+  crystalPulse: [0.1216, 0.0642, 0.0242, 0.0032, 0.0019, 0.0205, 0.0583, 0.1136, 0.1844, 0.2677, 0.3603, 0.4585, 0.5583, 0.6558, 0.7471, 0.8285, 0.8968, 0.9494, 0.9840, 0.9993, 0.9947, 0.9704, 0.9273, 0.8672, 0.7925, 0.7061, 0.6114, 0.5124, 0.4128, 0.3168, 0.2280, 0.1501],
+  cloudDrift: [0.1216, 0.0642, 0.0242, 0.0032, 0.0019, 0.0205, 0.0583, 0.1136, 0.1844, 0.2677, 0.3603, 0.4585, 0.5583, 0.6558, 0.7471, 0.8285, 0.8968, 0.9494, 0.9840, 0.9993, 0.9947, 0.9704, 0.9273, 0.8672, 0.7925, 0.7061, 0.6114, 0.5124, 0.4128, 0.3168, 0.2280, 0.1501],
+  leafFall: [0.9546, 0.9042, 0.8377, 0.7578, 0.6675, 0.5706, 0.4708, 0.3722, 0.2787, 0.1941, 0.1216, 0.0642, 0.0242, 0.0032, 0.0019, 0.0205, 0.0583, 0.1136, 0.1844, 0.2677, 0.3603, 0.4585, 0.5583, 0.6558, 0.7471, 0.8285, 0.8968, 0.9494, 0.9840, 0.9993, 0.9947, 0.9704],
+  npcBob: [0.5706, 0.4708, 0.3722, 0.2787, 0.1941, 0.1216, 0.0642, 0.0242, 0.0032, 0.0019, 0.0205, 0.0583, 0.1136, 0.1844, 0.2677, 0.3603, 0.4585, 0.5583, 0.6558, 0.7471, 0.8285, 0.8968, 0.9494, 0.9840, 0.9993, 0.9947, 0.9704, 0.9273, 0.8672, 0.7925, 0.7061, 0.6114],
+  sunArc: [0.5000, 0.5993, 0.6947, 0.7823, 0.8587, 0.9207, 0.9660, 0.9927, 0.9998, 0.9869, 0.9546, 0.9042, 0.8377, 0.7578, 0.6675, 0.5706, 0.4708, 0.3722, 0.2787, 0.1941, 0.1216, 0.0642, 0.0242, 0.0032, 0.0019, 0.0205, 0.0583, 0.1136, 0.1844, 0.2677, 0.3603, 0.4585],
+};
+const MaterialStacks = {
+  wall_l1: { layers: ["stone", "stoneDark", "mortar"], blend: "overlay", detailScale: 1.10 },
+  wall_l2: { layers: ["stoneLight", "metalDark", "stone"], blend: "overlay", detailScale: 1.10 },
+  wall_l3: { layers: ["stoneLight", "metal", "gold"], blend: "overlay", detailScale: 1.10 },
+  th_l1: { layers: ["plaster", "wood", "roof"], blend: "overlay", detailScale: 1.10 },
+  th_l3: { layers: ["stone", "gold", "roof"], blend: "overlay", detailScale: 1.10 },
+  th_l5: { layers: ["marble", "gold", "crystal"], blend: "overlay", detailScale: 1.10 },
+  mine_d: { layers: ["metal", "crystal", "wood"], blend: "overlay", detailScale: 1.10 },
+  mine_s: { layers: ["stone", "dirt", "wood"], blend: "overlay", detailScale: 1.10 },
+  barracks: { layers: ["wood", "roof", "metal"], blend: "overlay", detailScale: 1.10 },
+  cannon: { layers: ["stone", "wood", "metal"], blend: "overlay", detailScale: 1.10 },
+  warcannon: { layers: ["metal", "woodDark", "metalDark"], blend: "overlay", detailScale: 1.10 },
+};
+const LodTable = [
+  { dist: 5, segments: 16, shadows: true, particles: true },
+  { dist: 7, segments: 16, shadows: true, particles: true },
+  { dist: 9, segments: 16, shadows: true, particles: true },
+  { dist: 11, segments: 16, shadows: true, particles: true },
+  { dist: 13, segments: 15, shadows: true, particles: true },
+  { dist: 15, segments: 15, shadows: true, particles: true },
+  { dist: 17, segments: 15, shadows: true, particles: true },
+  { dist: 19, segments: 15, shadows: true, particles: true },
+  { dist: 21, segments: 14, shadows: true, particles: true },
+  { dist: 23, segments: 14, shadows: true, particles: true },
+  { dist: 25, segments: 14, shadows: true, particles: true },
+  { dist: 27, segments: 14, shadows: true, particles: true },
+  { dist: 29, segments: 13, shadows: true, particles: true },
+  { dist: 31, segments: 13, shadows: true, particles: true },
+  { dist: 33, segments: 13, shadows: true, particles: true },
+  { dist: 35, segments: 13, shadows: true, particles: false },
+  { dist: 37, segments: 12, shadows: true, particles: false },
+  { dist: 39, segments: 12, shadows: true, particles: false },
+  { dist: 41, segments: 12, shadows: true, particles: false },
+  { dist: 43, segments: 12, shadows: true, particles: false },
+  { dist: 45, segments: 11, shadows: false, particles: false },
+  { dist: 47, segments: 11, shadows: false, particles: false },
+  { dist: 49, segments: 11, shadows: false, particles: false },
+  { dist: 51, segments: 11, shadows: false, particles: false },
+  { dist: 53, segments: 10, shadows: false, particles: false },
+  { dist: 55, segments: 10, shadows: false, particles: false },
+  { dist: 57, segments: 10, shadows: false, particles: false },
+  { dist: 59, segments: 10, shadows: false, particles: false },
+  { dist: 61, segments: 9, shadows: false, particles: false },
+  { dist: 63, segments: 9, shadows: false, particles: false },
+  { dist: 65, segments: 9, shadows: false, particles: false },
+  { dist: 67, segments: 9, shadows: false, particles: false },
+  { dist: 69, segments: 8, shadows: false, particles: false },
+  { dist: 71, segments: 8, shadows: false, particles: false },
+  { dist: 73, segments: 8, shadows: false, particles: false },
+  { dist: 75, segments: 8, shadows: false, particles: false },
+  { dist: 77, segments: 7, shadows: false, particles: false },
+  { dist: 79, segments: 7, shadows: false, particles: false },
+  { dist: 81, segments: 7, shadows: false, particles: false },
+  { dist: 83, segments: 7, shadows: false, particles: false },
+  { dist: 85, segments: 6, shadows: false, particles: false },
+  { dist: 87, segments: 6, shadows: false, particles: false },
+  { dist: 89, segments: 6, shadows: false, particles: false },
+  { dist: 91, segments: 6, shadows: false, particles: false },
+  { dist: 93, segments: 5, shadows: false, particles: false },
+  { dist: 95, segments: 5, shadows: false, particles: false },
+  { dist: 97, segments: 5, shadows: false, particles: false },
+  { dist: 99, segments: 5, shadows: false, particles: false },
+  { dist: 101, segments: 4, shadows: false, particles: false },
+  { dist: 103, segments: 4, shadows: false, particles: false },
+];
+const VisualFxTriggers = [
+  { id: 0, fx: "build_place", duration: 200, color: 0x40e0f0, scale: 0.80 },
+  { id: 1, fx: "upgrade_flash", duration: 250, color: 0x3fdff0, scale: 0.95 },
+  { id: 2, fx: "train_done", duration: 300, color: 0x3edef0, scale: 1.10 },
+  { id: 3, fx: "arrow_shot", duration: 350, color: 0x3dddf0, scale: 1.25 },
+  { id: 4, fx: "cannon_smoke", duration: 400, color: 0x3cdcf0, scale: 1.40 },
+  { id: 5, fx: "resource_full", duration: 450, color: 0x3bdbf0, scale: 0.80 },
+  { id: 6, fx: "victory", duration: 500, color: 0x3adaf0, scale: 0.95 },
+  { id: 7, fx: "defeat", duration: 550, color: 0x39d9f0, scale: 1.10 },
+  { id: 8, fx: "build_place", duration: 600, color: 0x38d8f0, scale: 1.25 },
+  { id: 9, fx: "upgrade_flash", duration: 650, color: 0x37d7f0, scale: 1.40 },
+  { id: 10, fx: "train_done", duration: 200, color: 0x36d6f0, scale: 0.80 },
+  { id: 11, fx: "arrow_shot", duration: 250, color: 0x35d5f0, scale: 0.95 },
+  { id: 12, fx: "cannon_smoke", duration: 300, color: 0x34d4f0, scale: 1.10 },
+  { id: 13, fx: "resource_full", duration: 350, color: 0x33d3f0, scale: 1.25 },
+  { id: 14, fx: "victory", duration: 400, color: 0x32d2f0, scale: 1.40 },
+  { id: 15, fx: "defeat", duration: 450, color: 0x31d1f0, scale: 0.80 },
+  { id: 16, fx: "build_place", duration: 500, color: 0x30d0f0, scale: 0.95 },
+  { id: 17, fx: "upgrade_flash", duration: 550, color: 0x2fcff0, scale: 1.10 },
+  { id: 18, fx: "train_done", duration: 600, color: 0x2ecef0, scale: 1.25 },
+  { id: 19, fx: "arrow_shot", duration: 650, color: 0x2dcdf0, scale: 1.40 },
+  { id: 20, fx: "cannon_smoke", duration: 200, color: 0x2cccf0, scale: 0.80 },
+  { id: 21, fx: "resource_full", duration: 250, color: 0x2bcbf0, scale: 0.95 },
+  { id: 22, fx: "victory", duration: 300, color: 0x2acaf0, scale: 1.10 },
+  { id: 23, fx: "defeat", duration: 350, color: 0x29c9f0, scale: 1.25 },
+  { id: 24, fx: "build_place", duration: 400, color: 0x28c8f0, scale: 1.40 },
+  { id: 25, fx: "upgrade_flash", duration: 450, color: 0x27c7f0, scale: 0.80 },
+  { id: 26, fx: "train_done", duration: 500, color: 0x26c6f0, scale: 0.95 },
+  { id: 27, fx: "arrow_shot", duration: 550, color: 0x25c5f0, scale: 1.10 },
+  { id: 28, fx: "cannon_smoke", duration: 600, color: 0x24c4f0, scale: 1.25 },
+  { id: 29, fx: "resource_full", duration: 650, color: 0x23c3f0, scale: 1.40 },
+  { id: 30, fx: "victory", duration: 200, color: 0x22c2f0, scale: 0.80 },
+  { id: 31, fx: "defeat", duration: 250, color: 0x21c1f0, scale: 0.95 },
+  { id: 32, fx: "build_place", duration: 300, color: 0x20c0f0, scale: 1.10 },
+  { id: 33, fx: "upgrade_flash", duration: 350, color: 0x1fbff0, scale: 1.25 },
+  { id: 34, fx: "train_done", duration: 400, color: 0x1ebef0, scale: 1.40 },
+  { id: 35, fx: "arrow_shot", duration: 450, color: 0x1dbdf0, scale: 0.80 },
+  { id: 36, fx: "cannon_smoke", duration: 500, color: 0x1cbcf0, scale: 0.95 },
+  { id: 37, fx: "resource_full", duration: 550, color: 0x1bbbf0, scale: 1.10 },
+  { id: 38, fx: "victory", duration: 600, color: 0x1abaf0, scale: 1.25 },
+  { id: 39, fx: "defeat", duration: 650, color: 0x19b9f0, scale: 1.40 },
+  { id: 40, fx: "build_place", duration: 200, color: 0x18b8f0, scale: 0.80 },
+  { id: 41, fx: "upgrade_flash", duration: 250, color: 0x17b7f0, scale: 0.95 },
+  { id: 42, fx: "train_done", duration: 300, color: 0x16b6f0, scale: 1.10 },
+  { id: 43, fx: "arrow_shot", duration: 350, color: 0x15b5f0, scale: 1.25 },
+  { id: 44, fx: "cannon_smoke", duration: 400, color: 0x14b4f0, scale: 1.40 },
+  { id: 45, fx: "resource_full", duration: 450, color: 0x13b3f0, scale: 0.80 },
+  { id: 46, fx: "victory", duration: 500, color: 0x12b2f0, scale: 0.95 },
+  { id: 47, fx: "defeat", duration: 550, color: 0x11b1f0, scale: 1.10 },
+  { id: 48, fx: "build_place", duration: 600, color: 0x40b0f0, scale: 1.25 },
+  { id: 49, fx: "upgrade_flash", duration: 650, color: 0x3faff0, scale: 1.40 },
+  { id: 50, fx: "train_done", duration: 200, color: 0x3eaef0, scale: 0.80 },
+  { id: 51, fx: "arrow_shot", duration: 250, color: 0x3dadf0, scale: 0.95 },
+  { id: 52, fx: "cannon_smoke", duration: 300, color: 0x3cacf0, scale: 1.10 },
+  { id: 53, fx: "resource_full", duration: 350, color: 0x3babf0, scale: 1.25 },
+  { id: 54, fx: "victory", duration: 400, color: 0x3aaaf0, scale: 1.40 },
+  { id: 55, fx: "defeat", duration: 450, color: 0x39a9f0, scale: 0.80 },
+  { id: 56, fx: "build_place", duration: 500, color: 0x38a8f0, scale: 0.95 },
+  { id: 57, fx: "upgrade_flash", duration: 550, color: 0x37a7f0, scale: 1.10 },
+  { id: 58, fx: "train_done", duration: 600, color: 0x36a6f0, scale: 1.25 },
+  { id: 59, fx: "arrow_shot", duration: 650, color: 0x35a5f0, scale: 1.40 },
+  { id: 60, fx: "cannon_smoke", duration: 200, color: 0x34a4f0, scale: 0.80 },
+  { id: 61, fx: "resource_full", duration: 250, color: 0x33a3f0, scale: 0.95 },
+  { id: 62, fx: "victory", duration: 300, color: 0x32a2f0, scale: 1.10 },
+  { id: 63, fx: "defeat", duration: 350, color: 0x31a1f0, scale: 1.25 },
+];
+
+try { spawnWorldProps(); } catch(e) {}
+
+// ---- HQ texture rebuilder (v6.1.0) ----
+function rebuildHQTextures() {
+  // Higher octaves for grass
+  if (typeof fbm === 'function' && typeof makeNoiseCanvas === 'function') {
+    try {
+      const g = makeNoiseCanvas(256, (x, y) => {
+        const n = fbm(x * 0.035, y * 0.035, 6);
+        const blade = Math.abs(Math.sin(x * 0.7 + n * 4)) * 18;
+        return [42 + n * 32 + blade * 0.25, 95 + n * 60 + blade, 32 + n * 22];
+      });
+      g.repeat.set(3, 3);
+      if (M.grassA) { M.grassA.map = g; M.grassA.needsUpdate = true; }
+      const st = makeNoiseCanvas(256, (x, y) => {
+        const n = fbm(x * 0.028, y * 0.028, 6);
+        const crack = Math.pow(Math.abs(Math.sin(x * 0.12) * Math.cos(y * 0.1)), 10) * 35;
+        const v = 105 + n * 75 - crack;
+        return [v * 0.88, v * 0.93, v * 0.9];
+      });
+      st.repeat.set(2, 2);
+      if (M.stone) { M.stone.map = st; M.stone.needsUpdate = true; }
+    } catch (e) {}
+  }
+}
+
+const TreeSpeciesProfile = [
+  { name: "sp0", trunkH: 0.80, trunkR: 0.06, layers: 3, leafColor: 0x1a5a20, lean: -0.10 },
+  { name: "sp1", trunkH: 0.88, trunkR: 0.07, layers: 4, leafColor: 0x1d5f20, lean: -0.05 },
+  { name: "sp2", trunkH: 0.96, trunkR: 0.09, layers: 3, leafColor: 0x206420, lean: 0.00 },
+  { name: "sp3", trunkH: 1.04, trunkR: 0.10, layers: 4, leafColor: 0x236920, lean: 0.05 },
+  { name: "sp4", trunkH: 1.12, trunkR: 0.06, layers: 3, leafColor: 0x266e20, lean: 0.10 },
+  { name: "sp5", trunkH: 1.20, trunkR: 0.07, layers: 4, leafColor: 0x297320, lean: -0.10 },
+  { name: "sp6", trunkH: 0.80, trunkR: 0.09, layers: 3, leafColor: 0x2c7820, lean: -0.05 },
+  { name: "sp7", trunkH: 0.88, trunkR: 0.10, layers: 4, leafColor: 0x2f7d20, lean: 0.00 },
+  { name: "sp8", trunkH: 0.96, trunkR: 0.06, layers: 3, leafColor: 0x328220, lean: 0.05 },
+  { name: "sp9", trunkH: 1.04, trunkR: 0.07, layers: 4, leafColor: 0x358720, lean: 0.10 },
+  { name: "sp10", trunkH: 1.12, trunkR: 0.09, layers: 3, leafColor: 0x388c20, lean: -0.10 },
+  { name: "sp11", trunkH: 1.20, trunkR: 0.10, layers: 4, leafColor: 0x1b5100, lean: -0.05 },
+  { name: "sp12", trunkH: 0.80, trunkR: 0.06, layers: 3, leafColor: 0x1e5600, lean: 0.00 },
+  { name: "sp13", trunkH: 0.88, trunkR: 0.07, layers: 4, leafColor: 0x215b00, lean: 0.05 },
+  { name: "sp14", trunkH: 0.96, trunkR: 0.09, layers: 3, leafColor: 0x246000, lean: 0.10 },
+  { name: "sp15", trunkH: 1.04, trunkR: 0.10, layers: 4, leafColor: 0x276500, lean: -0.10 },
+  { name: "sp16", trunkH: 1.12, trunkR: 0.06, layers: 3, leafColor: 0x2a6a00, lean: -0.05 },
+  { name: "sp17", trunkH: 1.20, trunkR: 0.07, layers: 4, leafColor: 0x2d6f00, lean: 0.00 },
+  { name: "sp18", trunkH: 0.80, trunkR: 0.09, layers: 3, leafColor: 0x307400, lean: 0.05 },
+  { name: "sp19", trunkH: 0.88, trunkR: 0.10, layers: 4, leafColor: 0x337900, lean: 0.10 },
+  { name: "sp20", trunkH: 0.96, trunkR: 0.06, layers: 3, leafColor: 0x367e00, lean: -0.10 },
+  { name: "sp21", trunkH: 1.04, trunkR: 0.07, layers: 4, leafColor: 0x398300, lean: -0.05 },
+  { name: "sp22", trunkH: 1.12, trunkR: 0.09, layers: 3, leafColor: 0x1c47e0, lean: 0.00 },
+  { name: "sp23", trunkH: 1.20, trunkR: 0.10, layers: 4, leafColor: 0x1f4ce0, lean: 0.05 },
+  { name: "sp24", trunkH: 0.80, trunkR: 0.06, layers: 3, leafColor: 0x2251e0, lean: 0.10 },
+  { name: "sp25", trunkH: 0.88, trunkR: 0.07, layers: 4, leafColor: 0x2556e0, lean: -0.10 },
+  { name: "sp26", trunkH: 0.96, trunkR: 0.09, layers: 3, leafColor: 0x285be0, lean: -0.05 },
+  { name: "sp27", trunkH: 1.04, trunkR: 0.10, layers: 4, leafColor: 0x2b60e0, lean: 0.00 },
+  { name: "sp28", trunkH: 1.12, trunkR: 0.06, layers: 3, leafColor: 0x2e65e0, lean: 0.05 },
+  { name: "sp29", trunkH: 1.20, trunkR: 0.07, layers: 4, leafColor: 0x316ae0, lean: 0.10 },
+  { name: "sp30", trunkH: 0.80, trunkR: 0.09, layers: 3, leafColor: 0x346fe0, lean: -0.10 },
+  { name: "sp31", trunkH: 0.88, trunkR: 0.10, layers: 4, leafColor: 0x3774e0, lean: -0.05 },
+  { name: "sp32", trunkH: 0.96, trunkR: 0.06, layers: 3, leafColor: 0x3a79e0, lean: 0.00 },
+  { name: "sp33", trunkH: 1.04, trunkR: 0.07, layers: 4, leafColor: 0x1d3ec0, lean: 0.05 },
+  { name: "sp34", trunkH: 1.12, trunkR: 0.09, layers: 3, leafColor: 0x2043c0, lean: 0.10 },
+  { name: "sp35", trunkH: 1.20, trunkR: 0.10, layers: 4, leafColor: 0x2348c0, lean: -0.10 },
+  { name: "sp36", trunkH: 0.80, trunkR: 0.06, layers: 3, leafColor: 0x264dc0, lean: -0.05 },
+  { name: "sp37", trunkH: 0.88, trunkR: 0.07, layers: 4, leafColor: 0x2952c0, lean: 0.00 },
+  { name: "sp38", trunkH: 0.96, trunkR: 0.09, layers: 3, leafColor: 0x2c57c0, lean: 0.05 },
+  { name: "sp39", trunkH: 1.04, trunkR: 0.10, layers: 4, leafColor: 0x2f5cc0, lean: 0.10 },
+];
+
+const CloudLayerProfiles = [
+  { y: 10.0, speed: 0.10, scale: 0.80, opacity: 0.50, count: 3 },
+  { y: 10.4, speed: 0.13, scale: 1.00, opacity: 0.60, count: 4 },
+  { y: 10.8, speed: 0.16, scale: 1.20, opacity: 0.70, count: 5 },
+  { y: 11.2, speed: 0.19, scale: 1.40, opacity: 0.80, count: 6 },
+  { y: 11.6, speed: 0.22, scale: 1.60, opacity: 0.50, count: 3 },
+  { y: 12.0, speed: 0.25, scale: 0.80, opacity: 0.60, count: 4 },
+  { y: 12.4, speed: 0.28, scale: 1.00, opacity: 0.70, count: 5 },
+  { y: 12.8, speed: 0.10, scale: 1.20, opacity: 0.80, count: 6 },
+  { y: 13.2, speed: 0.13, scale: 1.40, opacity: 0.50, count: 3 },
+  { y: 13.6, speed: 0.16, scale: 1.60, opacity: 0.60, count: 4 },
+  { y: 14.0, speed: 0.19, scale: 0.80, opacity: 0.70, count: 5 },
+  { y: 14.4, speed: 0.22, scale: 1.00, opacity: 0.80, count: 6 },
+  { y: 14.8, speed: 0.25, scale: 1.20, opacity: 0.50, count: 3 },
+  { y: 15.2, speed: 0.28, scale: 1.40, opacity: 0.60, count: 4 },
+  { y: 15.6, speed: 0.10, scale: 1.60, opacity: 0.70, count: 5 },
+  { y: 16.0, speed: 0.13, scale: 0.80, opacity: 0.80, count: 6 },
+  { y: 16.4, speed: 0.16, scale: 1.00, opacity: 0.50, count: 3 },
+  { y: 16.8, speed: 0.19, scale: 1.20, opacity: 0.60, count: 4 },
+  { y: 17.2, speed: 0.22, scale: 1.40, opacity: 0.70, count: 5 },
+  { y: 17.6, speed: 0.25, scale: 1.60, opacity: 0.80, count: 6 },
+  { y: 18.0, speed: 0.28, scale: 0.80, opacity: 0.50, count: 3 },
+  { y: 18.4, speed: 0.10, scale: 1.00, opacity: 0.60, count: 4 },
+  { y: 18.8, speed: 0.13, scale: 1.20, opacity: 0.70, count: 5 },
+  { y: 19.2, speed: 0.16, scale: 1.40, opacity: 0.80, count: 6 },
+  { y: 19.6, speed: 0.19, scale: 1.60, opacity: 0.50, count: 3 },
+];
+
+const BuildingDamageOverlays = [
+  { hpRatio: 1.00, crackIntensity: 0.00, soot: 0.00, emissivePulse: 0.10 },
+  { hpRatio: 0.97, crackIntensity: 0.03, soot: 0.02, emissivePulse: 0.12 },
+  { hpRatio: 0.94, crackIntensity: 0.06, soot: 0.04, emissivePulse: 0.14 },
+  { hpRatio: 0.91, crackIntensity: 0.09, soot: 0.06, emissivePulse: 0.16 },
+  { hpRatio: 0.88, crackIntensity: 0.12, soot: 0.08, emissivePulse: 0.18 },
+  { hpRatio: 0.85, crackIntensity: 0.15, soot: 0.10, emissivePulse: 0.20 },
+  { hpRatio: 0.82, crackIntensity: 0.18, soot: 0.12, emissivePulse: 0.22 },
+  { hpRatio: 0.79, crackIntensity: 0.21, soot: 0.14, emissivePulse: 0.24 },
+  { hpRatio: 0.76, crackIntensity: 0.24, soot: 0.16, emissivePulse: 0.26 },
+  { hpRatio: 0.73, crackIntensity: 0.27, soot: 0.18, emissivePulse: 0.28 },
+  { hpRatio: 0.70, crackIntensity: 0.30, soot: 0.20, emissivePulse: 0.30 },
+  { hpRatio: 0.67, crackIntensity: 0.33, soot: 0.22, emissivePulse: 0.32 },
+  { hpRatio: 0.64, crackIntensity: 0.36, soot: 0.24, emissivePulse: 0.34 },
+  { hpRatio: 0.61, crackIntensity: 0.39, soot: 0.26, emissivePulse: 0.36 },
+  { hpRatio: 0.58, crackIntensity: 0.42, soot: 0.28, emissivePulse: 0.38 },
+  { hpRatio: 0.55, crackIntensity: 0.45, soot: 0.30, emissivePulse: 0.40 },
+  { hpRatio: 0.52, crackIntensity: 0.48, soot: 0.32, emissivePulse: 0.42 },
+  { hpRatio: 0.49, crackIntensity: 0.51, soot: 0.34, emissivePulse: 0.44 },
+  { hpRatio: 0.46, crackIntensity: 0.54, soot: 0.36, emissivePulse: 0.46 },
+  { hpRatio: 0.43, crackIntensity: 0.57, soot: 0.38, emissivePulse: 0.48 },
+  { hpRatio: 0.40, crackIntensity: 0.60, soot: 0.40, emissivePulse: 0.50 },
+  { hpRatio: 0.37, crackIntensity: 0.63, soot: 0.42, emissivePulse: 0.52 },
+  { hpRatio: 0.34, crackIntensity: 0.66, soot: 0.44, emissivePulse: 0.54 },
+  { hpRatio: 0.31, crackIntensity: 0.69, soot: 0.46, emissivePulse: 0.56 },
+  { hpRatio: 0.28, crackIntensity: 0.72, soot: 0.48, emissivePulse: 0.58 },
+  { hpRatio: 0.25, crackIntensity: 0.75, soot: 0.50, emissivePulse: 0.60 },
+  { hpRatio: 0.22, crackIntensity: 0.78, soot: 0.52, emissivePulse: 0.62 },
+  { hpRatio: 0.19, crackIntensity: 0.81, soot: 0.54, emissivePulse: 0.64 },
+  { hpRatio: 0.16, crackIntensity: 0.84, soot: 0.56, emissivePulse: 0.66 },
+  { hpRatio: 0.13, crackIntensity: 0.87, soot: 0.58, emissivePulse: 0.68 },
+];
+
+function sampleAnimCurve(name, t) {
+  const c = AnimCurves[name];
+  if (!c || !c.length) return 0.5;
+  const idx = Math.floor((t % 1) * c.length) % c.length;
+  return c[idx];
+}
+
+try { rebuildHQTextures(); } catch(e) {}
+
+const LightProbeTable = [
+  { x: -8.00, y: 0.50, z: -8.00, color: 0xffe0a0, intensity: 0.15, dist: 2.0 },
+  { x: -6.70, y: 0.80, z: -6.30, color: 0xfadd98, intensity: 0.23, dist: 3.0 },
+  { x: -5.40, y: 1.10, z: -4.60, color: 0xf5da90, intensity: 0.31, dist: 4.0 },
+  { x: -4.10, y: 1.40, z: -2.90, color: 0xf0d788, intensity: 0.39, dist: 5.0 },
+  { x: -2.80, y: 1.70, z: -1.20, color: 0xebd480, intensity: 0.47, dist: 2.0 },
+  { x: -1.50, y: 0.50, z: 0.50, color: 0xe6d178, intensity: 0.55, dist: 3.0 },
+  { x: -0.20, y: 0.80, z: 2.20, color: 0xe1ce70, intensity: 0.15, dist: 4.0 },
+  { x: 1.10, y: 1.10, z: 3.90, color: 0xfceb88, intensity: 0.23, dist: 5.0 },
+  { x: 2.40, y: 1.40, z: 5.60, color: 0xf7e880, intensity: 0.31, dist: 2.0 },
+  { x: 3.70, y: 1.70, z: 7.30, color: 0xf2e578, intensity: 0.39, dist: 3.0 },
+  { x: 5.00, y: 0.50, z: -7.00, color: 0xede270, intensity: 0.47, dist: 4.0 },
+  { x: 6.30, y: 0.80, z: -5.30, color: 0xe8df68, intensity: 0.55, dist: 5.0 },
+  { x: 7.60, y: 1.10, z: -3.60, color: 0xe3dc60, intensity: 0.15, dist: 2.0 },
+  { x: -7.10, y: 1.40, z: -1.90, color: 0xfef978, intensity: 0.23, dist: 3.0 },
+  { x: -5.80, y: 1.70, z: -0.20, color: 0xf9f670, intensity: 0.31, dist: 4.0 },
+  { x: -4.50, y: 0.50, z: 1.50, color: 0xf4f368, intensity: 0.39, dist: 5.0 },
+  { x: -3.20, y: 0.80, z: 3.20, color: 0xeff060, intensity: 0.47, dist: 2.0 },
+  { x: -1.90, y: 1.10, z: 4.90, color: 0xeaed58, intensity: 0.55, dist: 3.0 },
+  { x: -0.60, y: 1.40, z: 6.60, color: 0xe5ea50, intensity: 0.15, dist: 4.0 },
+  { x: 0.70, y: 1.70, z: -7.70, color: 0xe0e748, intensity: 0.23, dist: 5.0 },
+  { x: 2.00, y: 0.50, z: -6.00, color: 0xfc0460, intensity: 0.31, dist: 2.0 },
+  { x: 3.30, y: 0.80, z: -4.30, color: 0xf70158, intensity: 0.39, dist: 3.0 },
+  { x: 4.60, y: 1.10, z: -2.60, color: 0xf1fe50, intensity: 0.47, dist: 4.0 },
+  { x: 5.90, y: 1.40, z: -0.90, color: 0xecfb48, intensity: 0.55, dist: 5.0 },
+  { x: 7.20, y: 1.70, z: 0.80, color: 0xe7f840, intensity: 0.15, dist: 2.0 },
+  { x: -7.50, y: 0.50, z: 2.50, color: 0xe2f538, intensity: 0.23, dist: 3.0 },
+  { x: -6.20, y: 0.80, z: 4.20, color: 0xfe1250, intensity: 0.31, dist: 4.0 },
+  { x: -4.90, y: 1.10, z: 5.90, color: 0xf90f48, intensity: 0.39, dist: 5.0 },
+  { x: -3.60, y: 1.40, z: 7.60, color: 0xf40c40, intensity: 0.47, dist: 2.0 },
+  { x: -2.30, y: 1.70, z: -6.70, color: 0xef0938, intensity: 0.55, dist: 3.0 },
+  { x: -1.00, y: 0.50, z: -5.00, color: 0xea0630, intensity: 0.15, dist: 4.0 },
+  { x: 0.30, y: 0.80, z: -3.30, color: 0xe50328, intensity: 0.23, dist: 5.0 },
+  { x: 1.60, y: 1.10, z: -1.60, color: 0xe00020, intensity: 0.31, dist: 2.0 },
+  { x: 2.90, y: 1.40, z: 0.10, color: 0xfb1d38, intensity: 0.39, dist: 3.0 },
+  { x: 4.20, y: 1.70, z: 1.80, color: 0xf61a30, intensity: 0.47, dist: 4.0 },
+  { x: 5.50, y: 0.50, z: 3.50, color: 0xf11728, intensity: 0.55, dist: 5.0 },
+  { x: 6.80, y: 0.80, z: 5.20, color: 0xec1420, intensity: 0.15, dist: 2.0 },
+  { x: -7.90, y: 1.10, z: 6.90, color: 0xe71118, intensity: 0.23, dist: 3.0 },
+  { x: -6.60, y: 1.40, z: -7.40, color: 0xe20e10, intensity: 0.31, dist: 4.0 },
+  { x: -5.30, y: 1.70, z: -5.70, color: 0xfd2b28, intensity: 0.39, dist: 5.0 },
+  { x: -4.00, y: 0.50, z: -4.00, color: 0xf82820, intensity: 0.47, dist: 2.0 },
+  { x: -2.70, y: 0.80, z: -2.30, color: 0xf32518, intensity: 0.55, dist: 3.0 },
+  { x: -1.40, y: 1.10, z: -0.60, color: 0xee2210, intensity: 0.15, dist: 4.0 },
+  { x: -0.10, y: 1.40, z: 1.10, color: 0xe91f08, intensity: 0.23, dist: 5.0 },
+  { x: 1.20, y: 1.70, z: 2.80, color: 0xe41c00, intensity: 0.31, dist: 2.0 },
+  { x: 2.50, y: 0.50, z: 4.50, color: 0xff3918, intensity: 0.39, dist: 3.0 },
+  { x: 3.80, y: 0.80, z: 6.20, color: 0xfa3610, intensity: 0.47, dist: 4.0 },
+  { x: 5.10, y: 1.10, z: 7.90, color: 0xf53308, intensity: 0.55, dist: 5.0 },
+  { x: 6.40, y: 1.40, z: -6.40, color: 0xf03000, intensity: 0.15, dist: 2.0 },
+  { x: 7.70, y: 1.70, z: -4.70, color: 0xeb2cf8, intensity: 0.23, dist: 3.0 },
+  { x: -7.00, y: 0.50, z: -3.00, color: 0xe629f0, intensity: 0.31, dist: 4.0 },
+  { x: -5.70, y: 0.80, z: -1.30, color: 0xe126e8, intensity: 0.39, dist: 5.0 },
+  { x: -4.40, y: 1.10, z: 0.40, color: 0xfc4400, intensity: 0.47, dist: 2.0 },
+  { x: -3.10, y: 1.40, z: 2.10, color: 0xf740f8, intensity: 0.55, dist: 3.0 },
+  { x: -1.80, y: 1.70, z: 3.80, color: 0xf23df0, intensity: 0.15, dist: 4.0 },
+  { x: -0.50, y: 0.50, z: 5.50, color: 0xed3ae8, intensity: 0.23, dist: 5.0 },
+  { x: 0.80, y: 0.80, z: 7.20, color: 0xe837e0, intensity: 0.31, dist: 2.0 },
+  { x: 2.10, y: 1.10, z: -7.10, color: 0xe334d8, intensity: 0.39, dist: 3.0 },
+  { x: 3.40, y: 1.40, z: -5.40, color: 0xfe51f0, intensity: 0.47, dist: 4.0 },
+  { x: 4.70, y: 1.70, z: -3.70, color: 0xf94ee8, intensity: 0.55, dist: 5.0 },
+  { x: 6.00, y: 0.50, z: -2.00, color: 0xf44be0, intensity: 0.15, dist: 2.0 },
+  { x: 7.30, y: 0.80, z: -0.30, color: 0xef48d8, intensity: 0.23, dist: 3.0 },
+  { x: -7.40, y: 1.10, z: 1.40, color: 0xea45d0, intensity: 0.31, dist: 4.0 },
+  { x: -6.10, y: 1.40, z: 3.10, color: 0xe542c8, intensity: 0.39, dist: 5.0 },
+  { x: -4.80, y: 1.70, z: 4.80, color: 0xe03fc0, intensity: 0.47, dist: 2.0 },
+  { x: -3.50, y: 0.50, z: 6.50, color: 0xfb5cd8, intensity: 0.55, dist: 3.0 },
+  { x: -2.20, y: 0.80, z: -7.80, color: 0xf659d0, intensity: 0.15, dist: 4.0 },
+  { x: -0.90, y: 1.10, z: -6.10, color: 0xf156c8, intensity: 0.23, dist: 5.0 },
+  { x: 0.40, y: 1.40, z: -4.40, color: 0xec53c0, intensity: 0.31, dist: 2.0 },
+  { x: 1.70, y: 1.70, z: -2.70, color: 0xe750b8, intensity: 0.39, dist: 3.0 },
+  { x: 3.00, y: 0.50, z: -1.00, color: 0xe24db0, intensity: 0.47, dist: 4.0 },
+  { x: 4.30, y: 0.80, z: 0.70, color: 0xfd6ac8, intensity: 0.55, dist: 5.0 },
+  { x: 5.60, y: 1.10, z: 2.40, color: 0xf867c0, intensity: 0.15, dist: 2.0 },
+  { x: 6.90, y: 1.40, z: 4.10, color: 0xf364b8, intensity: 0.23, dist: 3.0 },
+  { x: -7.80, y: 1.70, z: 5.80, color: 0xee61b0, intensity: 0.31, dist: 4.0 },
+  { x: -6.50, y: 0.50, z: 7.50, color: 0xe95ea8, intensity: 0.39, dist: 5.0 },
+  { x: -5.20, y: 0.80, z: -6.80, color: 0xe45ba0, intensity: 0.47, dist: 2.0 },
+  { x: -3.90, y: 1.10, z: -5.10, color: 0xff78b8, intensity: 0.55, dist: 3.0 },
+  { x: -2.60, y: 1.40, z: -3.40, color: 0xfa75b0, intensity: 0.15, dist: 4.0 },
+  { x: -1.30, y: 1.70, z: -1.70, color: 0xf572a8, intensity: 0.23, dist: 5.0 },
+];
+const ShadowCascadeHints = [
+  { cascade: 0, near: 1.0, far: 10.0, bias: 0.00010, radius: 1.00 },
+  { cascade: 1, near: 1.5, far: 12.0, bias: 0.00012, radius: 1.30 },
+  { cascade: 2, near: 2.0, far: 14.0, bias: 0.00014, radius: 1.60 },
+  { cascade: 3, near: 2.5, far: 16.0, bias: 0.00016, radius: 1.90 },
+  { cascade: 0, near: 3.0, far: 18.0, bias: 0.00018, radius: 2.20 },
+  { cascade: 1, near: 3.5, far: 20.0, bias: 0.00020, radius: 1.00 },
+  { cascade: 2, near: 4.0, far: 22.0, bias: 0.00022, radius: 1.30 },
+  { cascade: 3, near: 4.5, far: 24.0, bias: 0.00024, radius: 1.60 },
+  { cascade: 0, near: 5.0, far: 26.0, bias: 0.00026, radius: 1.90 },
+  { cascade: 1, near: 5.5, far: 28.0, bias: 0.00028, radius: 2.20 },
+  { cascade: 2, near: 6.0, far: 30.0, bias: 0.00030, radius: 1.00 },
+  { cascade: 3, near: 6.5, far: 32.0, bias: 0.00032, radius: 1.30 },
+  { cascade: 0, near: 7.0, far: 34.0, bias: 0.00034, radius: 1.60 },
+  { cascade: 1, near: 7.5, far: 36.0, bias: 0.00036, radius: 1.90 },
+  { cascade: 2, near: 8.0, far: 38.0, bias: 0.00038, radius: 2.20 },
+  { cascade: 3, near: 8.5, far: 40.0, bias: 0.00040, radius: 1.00 },
+  { cascade: 0, near: 9.0, far: 42.0, bias: 0.00042, radius: 1.30 },
+  { cascade: 1, near: 9.5, far: 44.0, bias: 0.00044, radius: 1.60 },
+  { cascade: 2, near: 10.0, far: 46.0, bias: 0.00046, radius: 1.90 },
+  { cascade: 3, near: 10.5, far: 48.0, bias: 0.00048, radius: 2.20 },
+  { cascade: 0, near: 11.0, far: 50.0, bias: 0.00050, radius: 1.00 },
+  { cascade: 1, near: 11.5, far: 52.0, bias: 0.00052, radius: 1.30 },
+  { cascade: 2, near: 12.0, far: 54.0, bias: 0.00054, radius: 1.60 },
+  { cascade: 3, near: 12.5, far: 56.0, bias: 0.00056, radius: 1.90 },
+  { cascade: 0, near: 13.0, far: 58.0, bias: 0.00058, radius: 2.20 },
+  { cascade: 1, near: 13.5, far: 60.0, bias: 0.00060, radius: 1.00 },
+  { cascade: 2, near: 14.0, far: 62.0, bias: 0.00062, radius: 1.30 },
+  { cascade: 3, near: 14.5, far: 64.0, bias: 0.00064, radius: 1.60 },
+  { cascade: 0, near: 15.0, far: 66.0, bias: 0.00066, radius: 1.90 },
+  { cascade: 1, near: 15.5, far: 68.0, bias: 0.00068, radius: 2.20 },
+  { cascade: 2, near: 16.0, far: 70.0, bias: 0.00070, radius: 1.00 },
+  { cascade: 3, near: 16.5, far: 72.0, bias: 0.00072, radius: 1.30 },
+  { cascade: 0, near: 17.0, far: 74.0, bias: 0.00074, radius: 1.60 },
+  { cascade: 1, near: 17.5, far: 76.0, bias: 0.00076, radius: 1.90 },
+  { cascade: 2, near: 18.0, far: 78.0, bias: 0.00078, radius: 2.20 },
+  { cascade: 3, near: 18.5, far: 80.0, bias: 0.00080, radius: 1.00 },
+  { cascade: 0, near: 19.0, far: 82.0, bias: 0.00082, radius: 1.30 },
+  { cascade: 1, near: 19.5, far: 84.0, bias: 0.00084, radius: 1.60 },
+  { cascade: 2, near: 20.0, far: 86.0, bias: 0.00086, radius: 1.90 },
+  { cascade: 3, near: 20.5, far: 88.0, bias: 0.00088, radius: 2.20 },
+];
 window.KingTownEngine = {
-  version: '6.0.1',
+  version: '6.1.0',
   getBuildings: () => buildings,
   getTroops: () => ({ ...troops }),
   totalPower, capacity, campLimit,
   scene, camera, renderer
 };
-console.info('[KingTown] v6.0.1 deep graphics ready');
+console.info('[KingTown] v6.1.0 enhanced graphics ready');
