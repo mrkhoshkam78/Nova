@@ -17,27 +17,27 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">⚔ <em>KING</em>TOWN<small>v3.5.5</small></div>
+    <div class="brand">⚔ <em>KING</em>TOWN<small>v4.0.0</small></div>
     <div class="resources">
-      <div class="res-bar">
+      <div class="res-bar big">
         <div class="res-label"><span>💎</span> الماس</div>
-        <div class="bar"><i id="bar-diamonds" style="width:40%;background:linear-gradient(90deg,#3ec9d0,#7ef0f8)"></i></div>
-        <b id="diamonds">750</b>
+        <div class="bar"><i id="bar-diamonds"></i></div>
+        <b id="diamonds">750</b><small id="cap-d">/2000</small>
       </div>
-      <div class="res-bar">
+      <div class="res-bar big">
         <div class="res-label"><span>🪨</span> سنگ</div>
-        <div class="bar"><i id="bar-stone" style="width:35%;background:linear-gradient(90deg,#8a9a8e,#c0d0c8)"></i></div>
-        <b id="stone">420</b>
+        <div class="bar"><i id="bar-stone"></i></div>
+        <b id="stone">420</b><small id="cap-s">/1500</small>
       </div>
-      <div class="res-bar token">
+      <div class="res-bar big token">
         <div class="res-label"><span>🟣</span> توکن</div>
-        <div class="bar"><i id="bar-tokens" style="width:15%;background:linear-gradient(90deg,#9b59b6,#d2a6f0)"></i></div>
-        <b id="tokens">15</b>
+        <div class="bar"><i id="bar-tokens"></i></div>
+        <b id="tokens">15</b><small>/100</small>
       </div>
-      <div class="res-bar oil">
-        <div class="res-label"><span>🛢️</span> نفت قرمز</div>
-        <div class="bar"><i id="bar-oil" style="width:5%;background:linear-gradient(90deg,#c0392b,#e74c3c)"></i></div>
-        <b id="oil">0</b>
+      <div class="res-bar big oil">
+        <div class="res-label"><span class="oil-icon">🛢️</span> نفت</div>
+        <div class="bar oil-bar"><i id="bar-oil"></i><span class="bubbles" id="oil-bubbles"></span></div>
+        <b id="oil">0</b><small id="cap-o">/80</small>
       </div>
       <div class="res-bar level">
         <div class="res-label"><span>⭐</span> سطح</div>
@@ -50,14 +50,15 @@
   <main>
     <div class="scene" id="scene-container">
       <div class="scene-vignette"></div>
-      <div class="notice" id="msg">به KingTown خوش آمدی، فرمانده!</div>
+      <div class="notice" id="msg">به KingTown خوش آمدی!</div>
       <div class="view-controls">
         <button id="left" title="چرخش چپ">⤺</button>
         <button id="right" title="چرخش راست">⤻</button>
-        <button id="plus" title="زوم">＋</button>
-        <button id="minus" title="کوچک">−</button>
-        <button id="mode-build" class="active" title="حالت ساخت">🏗</button>
-        <button id="mode-move" title="جابجایی سازه">↔</button>
+        <button id="plus">＋</button>
+        <button id="minus">−</button>
+        <button id="mode-build" class="active" title="ساخت">🏗</button>
+        <button id="mode-move" title="جابجایی">↔</button>
+        <button id="mode-rotate-wall" title="چرخش دیوار">↻</button>
       </div>
       <div class="mission">
         <b>ماموریت</b>
@@ -67,7 +68,15 @@
       <div class="selected-info hide" id="selected-info">
         <span id="sel-name">—</span>
         <button id="btn-upgrade" class="small">⬆ ارتقا</button>
+        <button id="btn-rotate-sel" class="small hide">↻ دیوار</button>
         <button id="btn-deselect" class="small">✕</button>
+      </div>
+      <div class="train-overlay hide" id="train-overlay">
+        <div class="train-card">
+          <span id="train-icon">🗡️</span>
+          <div class="train-bar"><i id="train-progress"></i></div>
+          <b id="train-timer">7s</b>
+        </div>
       </div>
     </div>
 
@@ -77,32 +86,60 @@
         <small id="mode-label">حالت ساخت</small>
       </div>
       <div class="build-list">
-        <button data-type="townhall" id="btn-th"><span>🏰</span><b>مرکز فرماندهی</b><small>فقط یکی · ارتقا</small></button>
-        <button data-type="diamondmine"><span>💎</span><b>معدن الماس</b><small>۵ توکن · حداکثر ۵</small></button>
-        <button data-type="stonepit"><span>🪨</span><b>معدن سنگ</b><small>۱۵۰ الماس · حداکثر ۵</small></button>
+        <button data-type="townhall" id="btn-th"><span>🏰</span><b>مرکز فرماندهی</b><small>فقط یکی</small></button>
+        <button data-type="diamondmine"><span>💎</span><b>معدن الماس</b><small>۵ توکن · max ۵</small></button>
+        <button data-type="stonepit"><span>🪨</span><b>معدن سنگ</b><small>۱۵۰ الماس · max ۵</small></button>
         <button data-type="barracks"><span>⚔️</span><b>پادگان</b><small>۱۸۰ الماس</small></button>
-        <button data-type="cannon"><span>🛡️</span><b>برج دفاعی</b><small>۱۵۰ الماس</small></button>
-        <button data-type="wall"><span>🧱</span><b>دیوار سنگی</b><small>۴۰ سنگ</small></button>
+        <button data-type="cannon"><span>🛡️</span><b>برج دفاعی</b><small>۱۲۰ سنگ</small></button>
+        <button data-type="wall"><span>🧱</span><b>دیوار</b><small>۴۰ سنگ · چرخش ۳۶۰°</small></button>
       </div>
 
       <div class="train-section">
-        <b>آموزش نیرو (نفت قرمز)</b>
+        <b>آموزش نیرو (نفت)</b>
         <div class="troop-btns">
-          <button data-troop="swordsman"><span>🗡️</span>شمشیردار<small>۸ نفت</small></button>
-          <button data-troop="archer"><span>🏹</span>کماندار<small>۱۰ نفت</small></button>
-          <button data-troop="thief"><span>🥷</span>دزد سنگ<small>۱۲ نفت</small></button>
+          <button data-troop="swordsman" title="۷ ثانیه">
+            <span class="troop-ico swords">🗡️</span>
+            <b>شمشیردار</b><small>۸ نفت · ۷ث</small>
+          </button>
+          <button data-troop="archer" title="۲۰ ثانیه">
+            <span class="troop-ico archer">🏹</span>
+            <b>کماندار</b><small>۱۰ نفت · ۲۰ث</small>
+          </button>
+          <button data-troop="thief" title="۱۲ ثانیه">
+            <span class="troop-ico thief">🥷</span>
+            <b>دزد</b><small>۱۲ نفت · ۱۲ث</small>
+          </button>
+        </div>
+      </div>
+
+      <div class="convert-box">
+        <b>تبدیل سنگ → نفت</b>
+        <div class="convert-row">
+          <input type="number" id="stone-amount" min="30" step="30" value="30" placeholder="سنگ">
+          <span id="oil-preview">= ۵ نفت</span>
+        </div>
+        <button id="convert-oil">تبدیل کن</button>
+      </div>
+
+      <div class="token-shop">
+        <b>خرید توکن</b>
+        <small>هر ۵ توکن ≈ ۱ دلار · حداکثر ۱۰۰</small>
+        <div class="shop-row">
+          <button data-pack="5">۵ · $1</button>
+          <button data-pack="15">۱۵ · $3</button>
+          <button data-pack="50">۵۰ · $10</button>
+          <button data-pack="100">۱۰۰ · $20</button>
         </div>
       </div>
 
       <div class="actions">
-        <button id="convert-oil">🛢️ تبدیل سنگ → نفت <small>۳۰ سنگ = ۵ نفت</small></button>
         <button id="attack">🚩 حمله</button>
         <button id="save">💾 ذخیره</button>
       </div>
       <div class="army">
-        <div>🗡️ <strong id="t-swordsman">0</strong></div>
-        <div>🏹 <strong id="t-archer">0</strong></div>
-        <div>🥷 <strong id="t-thief">0</strong></div>
+        <div class="army-item"><span class="troop-ico swords">🗡️</span> <strong id="t-swordsman">0</strong></div>
+        <div class="army-item"><span class="troop-ico archer">🏹</span> <strong id="t-archer">0</strong></div>
+        <div class="army-item"><span class="troop-ico thief">🥷</span> <strong id="t-thief">0</strong></div>
         <div>کل: <strong id="troops-total">0</strong></div>
       </div>
     </aside>
@@ -110,22 +147,18 @@
 
   <aside id="drawer" class="drawer hide">
     <button id="close" class="iconbtn">✕</button>
-    <h2>KingTown</h2>
-    <p>نسخه v3.5.5 — موتور Three.js + گرافیک ارتقایافته</p>
-    <p>مرکز فرماندهی فقط یکی و قابل ارتقا تا سطح ۵ است.</p>
-    <p>معدن الماس و سنگ حداکثر ۵ عدد.</p>
-    <p style="font-size:11px;color:#a8bba4">Assetهای Kenney (CC0) در پوشه assets/kenney موجود و قابل ویرایش توسط موتور هستند.</p>
+    <h2>KingTown v4.0.0</h2>
+    <p>ظرفیت منابع وابسته به سطح مرکز فرماندهی است.</p>
+    <p>توکن فقط از خرید (شبیه‌سازی) تأمین می‌شود.</p>
     <button id="reset">شروع دوباره</button>
   </aside>
 
   <div id="modal" class="modal hide">
     <section>
-      <h2 id="modal-title">⚔ میدان نبرد</h2>
+      <h2>⚔ میدان نبرد</h2>
       <p id="battleText"></p>
-      <div id="modal-actions">
-        <button id="launch">اعزام نیرو</button>
-        <button id="retreat">بازگشت</button>
-      </div>
+      <button id="launch">اعزام نیرو</button>
+      <button id="retreat">بازگشت</button>
     </section>
   </div>
 
@@ -133,13 +166,12 @@
     <section>
       <h2 id="confirm-title">تأیید</h2>
       <p id="confirm-text"></p>
-      <button id="confirm-yes">بله، ادامه بده</button>
+      <button id="confirm-yes">بله</button>
       <button id="confirm-no">انصراف</button>
     </section>
   </div>
 
-  <div id="rotateTip" class="rotate-tip">↻<br>برای تجربه بهتر، دستگاه را افقی نگه دار</div>
-
+  <div id="rotateTip" class="rotate-tip">↻<br>دستگاه را افقی نگه دار</div>
   <script type="module" src="game3d.js"></script>
 </body>
 </html>
