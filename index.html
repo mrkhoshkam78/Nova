@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <meta name="theme-color" content="#10221d">
-  <title>Kingdom Forge: Frontier — 3D</title>
+  <meta name="theme-color" content="#0d1f18">
+  <title>KingTown</title>
   <link rel="stylesheet" href="style.css">
   <script type="importmap">
   {
@@ -17,12 +17,32 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">⚔ KINGDOM <em>FORGE</em><small>FRONTIER 3D</small></div>
+    <div class="brand">⚔ <em>KING</em>TOWN<small>v3.5.5</small></div>
     <div class="resources">
-      <div class="res"><span>💎</span><b id="diamonds">750</b><small>الماس</small></div>
-      <div class="res"><span>🪨</span><b id="stone">420</b><small>سنگ</small></div>
-      <div class="res token"><span>🟣</span><b id="tokens">12</b><small>توکن محدود</small></div>
-      <div class="res"><span>⭐</span><b id="level">1</b><small>سطح</small></div>
+      <div class="res-bar">
+        <div class="res-label"><span>💎</span> الماس</div>
+        <div class="bar"><i id="bar-diamonds" style="width:40%;background:linear-gradient(90deg,#3ec9d0,#7ef0f8)"></i></div>
+        <b id="diamonds">750</b>
+      </div>
+      <div class="res-bar">
+        <div class="res-label"><span>🪨</span> سنگ</div>
+        <div class="bar"><i id="bar-stone" style="width:35%;background:linear-gradient(90deg,#8a9a8e,#c0d0c8)"></i></div>
+        <b id="stone">420</b>
+      </div>
+      <div class="res-bar token">
+        <div class="res-label"><span>🟣</span> توکن</div>
+        <div class="bar"><i id="bar-tokens" style="width:15%;background:linear-gradient(90deg,#9b59b6,#d2a6f0)"></i></div>
+        <b id="tokens">15</b>
+      </div>
+      <div class="res-bar oil">
+        <div class="res-label"><span>🛢️</span> نفت قرمز</div>
+        <div class="bar"><i id="bar-oil" style="width:5%;background:linear-gradient(90deg,#c0392b,#e74c3c)"></i></div>
+        <b id="oil">0</b>
+      </div>
+      <div class="res-bar level">
+        <div class="res-label"><span>⭐</span> سطح</div>
+        <b id="level">1</b>
+      </div>
     </div>
     <button id="menu" class="iconbtn">☰</button>
   </header>
@@ -30,57 +50,91 @@
   <main>
     <div class="scene" id="scene-container">
       <div class="scene-vignette"></div>
-      <div class="notice" id="msg">به سرزمینت خوش آمدی، فرمانده! (موتور Three.js فعال)</div>
+      <div class="notice" id="msg">به KingTown خوش آمدی، فرمانده!</div>
       <div class="view-controls">
-        <button id="left">⤺</button>
-        <button id="right">⤻</button>
-        <button id="plus">＋</button>
-        <button id="minus">−</button>
+        <button id="left" title="چرخش چپ">⤺</button>
+        <button id="right" title="چرخش راست">⤻</button>
+        <button id="plus" title="زوم">＋</button>
+        <button id="minus" title="کوچک">−</button>
+        <button id="mode-build" class="active" title="حالت ساخت">🏗</button>
+        <button id="mode-move" title="جابجایی سازه">↔</button>
       </div>
       <div class="mission">
-        <b>ماموریت فعال</b>
-        <span>مرکز فرماندهی را گسترش بده</span>
-        <div class="progress"><i></i></div>
+        <b>ماموریت</b>
+        <span id="mission-text">مرکز فرماندهی را ارتقا بده</span>
+        <div class="progress"><i id="mission-bar"></i></div>
+      </div>
+      <div class="selected-info hide" id="selected-info">
+        <span id="sel-name">—</span>
+        <button id="btn-upgrade" class="small">⬆ ارتقا</button>
+        <button id="btn-deselect" class="small">✕</button>
       </div>
     </div>
 
     <aside class="build-panel">
       <div class="panel-head">
         <b>ساخت‌وساز</b>
-        <small>یک سازه انتخاب کن</small>
+        <small id="mode-label">حالت ساخت</small>
       </div>
       <div class="build-list">
-        <button data-type="townhall"><span>🏰</span><b>مرکز فرماندهی</b><small>رایگان</small></button>
-        <button data-type="diamondmine"><span>💎</span><b>معدن الماس</b><small>۱۲۰ الماس</small></button>
-        <button data-type="stonepit"><span>🪨</span><b>معدن سنگ</b><small>۱۰۰ الماس</small></button>
+        <button data-type="townhall" id="btn-th"><span>🏰</span><b>مرکز فرماندهی</b><small>فقط یکی · ارتقا</small></button>
+        <button data-type="diamondmine"><span>💎</span><b>معدن الماس</b><small>۵ توکن · حداکثر ۵</small></button>
+        <button data-type="stonepit"><span>🪨</span><b>معدن سنگ</b><small>۱۵۰ الماس · حداکثر ۵</small></button>
         <button data-type="barracks"><span>⚔️</span><b>پادگان</b><small>۱۸۰ الماس</small></button>
         <button data-type="cannon"><span>🛡️</span><b>برج دفاعی</b><small>۱۵۰ الماس</small></button>
-        <button data-type="wall"><span>🧱</span><b>دیوار سنگی</b><small>۲۵ الماس</small></button>
+        <button data-type="wall"><span>🧱</span><b>دیوار سنگی</b><small>۴۰ سنگ</small></button>
       </div>
+
+      <div class="train-section">
+        <b>آموزش نیرو (نفت قرمز)</b>
+        <div class="troop-btns">
+          <button data-troop="swordsman"><span>🗡️</span>شمشیردار<small>۸ نفت</small></button>
+          <button data-troop="archer"><span>🏹</span>کماندار<small>۱۰ نفت</small></button>
+          <button data-troop="thief"><span>🥷</span>دزد سنگ<small>۱۲ نفت</small></button>
+        </div>
+      </div>
+
       <div class="actions">
-        <button id="train">⚔ آموزش نیرو <small>۵۰ سنگ</small></button>
-        <button id="attack">🚩 حمله به دشمن</button>
+        <button id="convert-oil">🛢️ تبدیل سنگ → نفت <small>۳۰ سنگ = ۵ نفت</small></button>
+        <button id="attack">🚩 حمله</button>
         <button id="save">💾 ذخیره</button>
       </div>
-      <div class="army">نیروهای آماده <strong id="troops">4</strong></div>
+      <div class="army">
+        <div>🗡️ <strong id="t-swordsman">0</strong></div>
+        <div>🏹 <strong id="t-archer">0</strong></div>
+        <div>🥷 <strong id="t-thief">0</strong></div>
+        <div>کل: <strong id="troops-total">0</strong></div>
+      </div>
     </aside>
   </main>
 
   <aside id="drawer" class="drawer hide">
     <button id="close" class="iconbtn">✕</button>
-    <h2>منوی بازی</h2>
-    <p>نسخه آفلاین — پیشرفت روی همین دستگاه ذخیره می‌شود.</p>
-    <p>موتور گرافیکی: <b style="color:#8fd46a">Three.js + ایزومتریک سه‌بعدی</b></p>
-    <p style="font-size:11px;color:#a8bba4">Assetهای رایگان Kenney (CC0) در پوشه assets موجود است.</p>
+    <h2>KingTown</h2>
+    <p>نسخه v3.5.5 — موتور Three.js + گرافیک ارتقایافته</p>
+    <p>مرکز فرماندهی فقط یکی و قابل ارتقا تا سطح ۵ است.</p>
+    <p>معدن الماس و سنگ حداکثر ۵ عدد.</p>
+    <p style="font-size:11px;color:#a8bba4">Assetهای Kenney (CC0) در پوشه assets/kenney موجود و قابل ویرایش توسط موتور هستند.</p>
     <button id="reset">شروع دوباره</button>
   </aside>
 
   <div id="modal" class="modal hide">
     <section>
-      <h2>⚔ میدان نبرد</h2>
+      <h2 id="modal-title">⚔ میدان نبرد</h2>
       <p id="battleText"></p>
-      <button id="launch">اعزام نیرو</button>
-      <button id="retreat">بازگشت به دهکده</button>
+      <div id="modal-actions">
+        <button id="launch">اعزام نیرو</button>
+        <button id="retreat">بازگشت</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="confirm" class="modal hide">
+    <section>
+      <h2 id="confirm-title">تأیید</h2>
+      <p id="confirm-text"></p>
+      <button id="confirm-yes">بله، ادامه بده</button>
+      <button id="confirm-no">انصراف</button>
     </section>
   </div>
 
