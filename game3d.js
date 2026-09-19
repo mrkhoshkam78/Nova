@@ -1,13 +1,13 @@
 /**
- * KingTown v5.05 — جهش گرافیکی
- * نورپردازی پیشرفته · متریال PBR · آسمان گرادیان · ذرات · مدل‌های پرجزئیات · سایه نرم
+ * KingTown v6.0.1 — جهش گرافیکی عمیق
+ * بافت رویه‌ای · شیدر · ذرات · روز/شب · ابر · گیاه · پرچم · مسیر · Kenney · جزئیات کامل
  */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const $ = id => document.getElementById(id);
 const container = document.getElementById('scene-container');
-const SAVE_KEY = 'kingTown_v505';
+const SAVE_KEY = 'kingTown_v601';
 
 let diamonds = 200, stone = 420, tokens = 15, oil = 0, level = 1;
 let rot = 0, zoom = 1.08, mode = 'build', chosen = null, selectedKey = null, moveTarget = null;
@@ -17,13 +17,13 @@ const troops = { swordsman: 0, archer: 0, thief: 0, cavalry: 0 };
 const MAX_MINE = 5, TH_MAX = 5, TOKEN_MAX = 100;
 
 const defs = {
-  townhall:    { name: 'مرکز فرماندهی', costD: 0, costT: 0, costS: 0, max: 1, hp: 500, cat: 'econ' },
-  diamondmine: { name: 'معدن الماس', costD: 0, costT: 5, costS: 0, max: MAX_MINE, hp: 120, cat: 'econ' },
-  stonepit:    { name: 'معدن سنگ', costD: 150, costT: 0, costS: 0, max: MAX_MINE, hp: 140, cat: 'econ' },
-  barracks:    { name: 'پادگان', costD: 180, costT: 0, costS: 0, max: 99, hp: 200, cat: 'mil' },
-  cannon:      { name: 'برج دفاعی', costD: 0, costT: 0, costS: 120, max: 99, hp: 180, cat: 'mil' },
-  warcannon:   { name: 'توپ جنگی', costD: 0, costT: 0, costS: 200, max: 10, hp: 280, cat: 'mil' },
-  wall:        { name: 'دیوار', costD: 0, costT: 0, costS: 40, max: 99, hp: 100, cat: 'mil' }
+  townhall:    { name: 'مرکز فرماندهی', costD: 0, costT: 0, costS: 0, max: 1, hp: 500 },
+  diamondmine: { name: 'معدن الماس', costD: 0, costT: 5, costS: 0, max: MAX_MINE, hp: 120 },
+  stonepit:    { name: 'معدن سنگ', costD: 150, costT: 0, costS: 0, max: MAX_MINE, hp: 140 },
+  barracks:    { name: 'پادگان', costD: 180, costT: 0, costS: 0, max: 99, hp: 200 },
+  cannon:      { name: 'برج دفاعی', costD: 0, costT: 0, costS: 120, max: 99, hp: 180 },
+  warcannon:   { name: 'توپ جنگی', costD: 0, costT: 0, costS: 200, max: 10, hp: 280 },
+  wall:        { name: 'دیوار', costD: 0, costT: 0, costS: 40, max: 99, hp: 100 }
 };
 const troopCost = { swordsman: 8, archer: 10, thief: 12, cavalry: 20 };
 const troopTime = { swordsman: 7, archer: 20, thief: 12, cavalry: 30 };
@@ -52,7 +52,7 @@ let buildings = [
   { type: 'cannon', x: 2, z: 2, rotY: 0, hp: 180, defLevel: 1 },
   { type: 'wall', x: -1, z: 3, rotY: 0, hp: 100, wallLevel: 1 },
   { type: 'wall', x: 0, z: 3, rotY: 0, hp: 100, wallLevel: 1 },
-  { type: 'wall', x: 1, z: 3, rotY: 0, hp: 100 }
+  { type: 'wall', x: 1, z: 3, rotY: 0, hp: 100, wallLevel: 1 }
 ];
 
 function confirmAction(title, text) {
@@ -69,9 +69,78 @@ function confirmAction(title, text) {
   });
 }
 
-// ===================== GRAPHICS CORE v5 =====================
+// ===================== PROCEDURAL TEXTURES =====================
+function makeNoiseCanvas(size, fn) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const v = fn(x, y, size);
+      img.data[i] = v[0]; img.data[i + 1] = v[1]; img.data[i + 2] = v[2]; img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function hash2(x, y) {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+const texGrass = makeNoiseCanvas(128, (x, y, s) => {
+  const n = hash2(x * 0.15, y * 0.15) * 0.3 + hash2(x * 0.4, y * 0.4) * 0.2;
+  const g = 90 + n * 50, r = 40 + n * 20, b = 30 + n * 15;
+  return [r, g, b];
+});
+texGrass.repeat.set(2, 2);
+
+const texGrassB = makeNoiseCanvas(128, (x, y) => {
+  const n = hash2(x * 0.12 + 10, y * 0.12) * 0.35;
+  return [35 + n * 25, 80 + n * 45, 28 + n * 15];
+});
+texGrassB.repeat.set(2, 2);
+
+const texStone = makeNoiseCanvas(128, (x, y) => {
+  const n = hash2(x * 0.2, y * 0.2) * 0.4 + hash2(x * 0.5, y * 0.5) * 0.2;
+  const v = 120 + n * 60;
+  return [v * 0.85, v * 0.9, v * 0.88];
+});
+texStone.repeat.set(1.5, 1.5);
+
+const texWood = makeNoiseCanvas(128, (x, y) => {
+  const grain = Math.sin(y * 0.4) * 15 + hash2(x * 0.1, y * 0.3) * 25;
+  return [90 + grain, 55 + grain * 0.5, 25 + grain * 0.3];
+});
+texWood.repeat.set(1, 2);
+
+const texRoof = makeNoiseCanvas(64, (x, y) => {
+  const n = hash2(x * 0.3, y * 0.3) * 0.3;
+  return [160 + n * 40, 55 + n * 20, 35 + n * 15];
+});
+texRoof.repeat.set(2, 2);
+
+const texDirt = makeNoiseCanvas(64, (x, y) => {
+  const n = hash2(x * 0.25, y * 0.25) * 0.4;
+  return [100 + n * 40, 80 + n * 30, 45 + n * 20];
+});
+texDirt.repeat.set(3, 3);
+
+const texMetal = makeNoiseCanvas(64, (x, y) => {
+  const n = hash2(x * 0.4, y * 0.4) * 0.3;
+  const v = 100 + n * 50;
+  return [v, v * 1.05, v * 0.95];
+});
+
+// ===================== SCENE & RENDERER =====================
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x6a9a5a, 0.018);
+scene.fog = new THREE.FogExp2(0x7aab6a, 0.016);
 
 const frustum = 12.5;
 let aspect = container.clientWidth / Math.max(container.clientHeight, 1);
@@ -79,273 +148,318 @@ const camera = new THREE.OrthographicCamera(-frustum * aspect, frustum * aspect,
 camera.position.set(22, 19, 22);
 camera.lookAt(0, 0.5, 0);
 
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  powerPreference: 'high-performance',
-  alpha: false
-});
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.28;
+renderer.toneMappingExposure = 1.25;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 container.insertBefore(renderer.domElement, container.firstChild);
 Object.assign(renderer.domElement.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', touchAction: 'none' });
 
-// —— آسمان گرادیان (به‌جای رنگ تخت) ——
-function makeSky() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 4; canvas.height = 256;
-  const ctx = canvas.getContext('2d');
+// Sky gradient sphere
+(function makeSky() {
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 256;
+  const ctx = c.getContext('2d');
   const g = ctx.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, '#5eb0e8');
-  g.addColorStop(0.35, '#8ec8e8');
-  g.addColorStop(0.55, '#b8dce0');
-  g.addColorStop(0.75, '#90c070');
-  g.addColorStop(1, '#4a8a40');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 4, 256);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.magFilter = THREE.LinearFilter;
-  const skyMat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, depthWrite: false });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(90, 32, 16), skyMat);
-  sky.renderOrder = -10;
+  g.addColorStop(0, '#4aa8e8'); g.addColorStop(0.4, '#9ad0e8');
+  g.addColorStop(0.6, '#c0dca0'); g.addColorStop(1, '#5a9a48');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 8, 256);
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(95, 32, 16),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: THREE.BackSide, depthWrite: false })
+  );
+  sky.renderOrder = -20;
   scene.add(sky);
-  scene.background = new THREE.Color(0x7ab8d8);
-}
-makeSky();
+  scene.background = new THREE.Color(0x7ab8d0);
+})();
 
-// —— نورپردازی سینمایی ——
-const hemi = new THREE.HemisphereLight(0xfff5e0, 0x3a6a30, 0.55);
+// ===================== LIGHTING + DAY/NIGHT =====================
+const hemi = new THREE.HemisphereLight(0xfff5e0, 0x3a6a30, 0.5);
 scene.add(hemi);
-
-const sun = new THREE.DirectionalLight(0xfff2d0, 1.55);
+const sun = new THREE.DirectionalLight(0xfff2d0, 1.5);
 sun.position.set(-16, 28, 12);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 80;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 80;
 sun.shadow.camera.left = sun.shadow.camera.bottom = -28;
 sun.shadow.camera.right = sun.shadow.camera.top = 28;
-sun.shadow.bias = -0.0002;
-sun.shadow.normalBias = 0.035;
-sun.shadow.radius = 2.5;
+sun.shadow.bias = -0.0002; sun.shadow.normalBias = 0.035; sun.shadow.radius = 2.2;
 scene.add(sun);
+const fill = new THREE.DirectionalLight(0xa0c8ff, 0.32);
+fill.position.set(14, 10, -16); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffd090, 0.22);
+rim.position.set(0, 8, 18); scene.add(rim);
+let dayPhase = 0.35; // 0..1
 
-const fill = new THREE.DirectionalLight(0xa0c8ff, 0.35);
-fill.position.set(14, 10, -16);
-scene.add(fill);
+function updateDayNight(t) {
+  dayPhase = (Math.sin(t * 0.02) * 0.5 + 0.5) * 0.3 + 0.35; // stay mostly day
+  const warmth = 0.7 + dayPhase * 0.3;
+  sun.intensity = 0.9 + dayPhase * 0.7;
+  sun.color.setRGB(1, 0.92 * warmth, 0.8 * warmth);
+  hemi.intensity = 0.35 + dayPhase * 0.25;
+  renderer.toneMappingExposure = 1.05 + dayPhase * 0.3;
+}
 
-const rim = new THREE.DirectionalLight(0xffd090, 0.25);
-rim.position.set(0, 8, 18);
-scene.add(rim);
-
-// —— کتابخانه متریال PBR ——
+// ===================== MATERIALS =====================
 const M = {
-  grassA: new THREE.MeshStandardMaterial({ color: 0x4c9a3a, roughness: 0.88, metalness: 0.0 }),
-  grassB: new THREE.MeshStandardMaterial({ color: 0x428832, roughness: 0.88, metalness: 0.0 }),
-  dirt: new THREE.MeshStandardMaterial({ color: 0x6a5a38, roughness: 0.92, metalness: 0.0 }),
-  wood: new THREE.MeshStandardMaterial({ color: 0x5a3a1e, roughness: 0.78, metalness: 0.05 }),
-  woodDark: new THREE.MeshStandardMaterial({ color: 0x3a2815, roughness: 0.8, metalness: 0.05 }),
-  leaf: new THREE.MeshStandardMaterial({ color: 0x1e6a2a, roughness: 0.72, metalness: 0.0 }),
-  leafDark: new THREE.MeshStandardMaterial({ color: 0x14501e, roughness: 0.75, metalness: 0.0 }),
-  stone: new THREE.MeshStandardMaterial({ color: 0x8a9690, roughness: 0.68, metalness: 0.08 }),
-  stoneDark: new THREE.MeshStandardMaterial({ color: 0x6a7670, roughness: 0.7, metalness: 0.1 }),
-  stoneLight: new THREE.MeshStandardMaterial({ color: 0xa8b4ae, roughness: 0.62, metalness: 0.1 }),
-  plaster: new THREE.MeshStandardMaterial({ color: 0xd4c4a0, roughness: 0.75, metalness: 0.02 }),
-  roofTile: new THREE.MeshStandardMaterial({ color: 0xb05030, roughness: 0.55, metalness: 0.15 }),
-  roofGold: new THREE.MeshStandardMaterial({ color: 0xd4a84b, roughness: 0.4, metalness: 0.35 }),
-  metal: new THREE.MeshStandardMaterial({ color: 0x6a7a72, roughness: 0.35, metalness: 0.65 }),
-  metalDark: new THREE.MeshStandardMaterial({ color: 0x3a4a42, roughness: 0.4, metalness: 0.7 }),
-  gold: new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.28, metalness: 0.85, emissive: 0x553300, emissiveIntensity: 0.15 }),
-  crystal: new THREE.MeshStandardMaterial({ color: 0x40e0f0, roughness: 0.12, metalness: 0.35, emissive: 0x108898, emissiveIntensity: 0.55, transparent: true, opacity: 0.92 }),
-  flag: new THREE.MeshStandardMaterial({ color: 0xc02828, side: THREE.DoubleSide, roughness: 0.6 }),
-  camp: new THREE.MeshStandardMaterial({ color: 0x4a3824, roughness: 0.9 }),
+  grassA: new THREE.MeshStandardMaterial({ map: texGrass, roughness: 0.9, metalness: 0.0 }),
+  grassB: new THREE.MeshStandardMaterial({ map: texGrassB, roughness: 0.9, metalness: 0.0 }),
+  dirt: new THREE.MeshStandardMaterial({ map: texDirt, roughness: 0.95, metalness: 0.0 }),
+  wood: new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.78, metalness: 0.05 }),
+  woodDark: new THREE.MeshStandardMaterial({ color: 0x3a2815, map: texWood, roughness: 0.82, metalness: 0.05 }),
+  leaf: new THREE.MeshStandardMaterial({ color: 0x1e6a2a, roughness: 0.72 }),
+  leafDark: new THREE.MeshStandardMaterial({ color: 0x14501e, roughness: 0.75 }),
+  stone: new THREE.MeshStandardMaterial({ map: texStone, roughness: 0.68, metalness: 0.08 }),
+  stoneDark: new THREE.MeshStandardMaterial({ color: 0x6a7670, map: texStone, roughness: 0.7, metalness: 0.1 }),
+  stoneLight: new THREE.MeshStandardMaterial({ color: 0xb0bcb6, map: texStone, roughness: 0.6, metalness: 0.1 }),
+  roof: new THREE.MeshStandardMaterial({ map: texRoof, roughness: 0.5, metalness: 0.12 }),
+  metal: new THREE.MeshStandardMaterial({ map: texMetal, roughness: 0.35, metalness: 0.7 }),
+  metalDark: new THREE.MeshStandardMaterial({ color: 0x3a4a42, map: texMetal, roughness: 0.4, metalness: 0.75 }),
+  gold: new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.28, metalness: 0.85, emissive: 0x553300, emissiveIntensity: 0.18 }),
+  flag: new THREE.MeshStandardMaterial({ color: 0xc02828, side: THREE.DoubleSide, roughness: 0.55 }),
+  camp: new THREE.MeshStandardMaterial({ map: texDirt, color: 0x6a5040, roughness: 0.9 }),
   skin: new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.7 }),
   clothBlue: new THREE.MeshStandardMaterial({ color: 0x2a4a8a, roughness: 0.65 }),
   clothPurple: new THREE.MeshStandardMaterial({ color: 0x6a2a8a, roughness: 0.65 }),
   clothGreen: new THREE.MeshStandardMaterial({ color: 0x3a4a2a, roughness: 0.65 }),
   clothBrown: new THREE.MeshStandardMaterial({ color: 0x6a3a1a, roughness: 0.65 }),
   sel: new THREE.MeshBasicMaterial({ color: 0x40e8f0, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
-  fireCore: new THREE.MeshBasicMaterial({ color: 0xff5010 }),
-  fireOuter: new THREE.MeshBasicMaterial({ color: 0xffa020, transparent: true, opacity: 0.55 })
+  plaster: new THREE.MeshStandardMaterial({ color: 0xd8c8a8, roughness: 0.75 })
 };
 
-const G = {
-  tile: new THREE.BoxGeometry(1, 0.14, 1),
-  ring: new THREE.RingGeometry(0.7, 0.88, 40),
-  campFloor: new THREE.CylinderGeometry(2.05, 2.15, 0.12, 32)
-};
+// Crystal shader
+const crystalUniforms = { time: { value: 0 }, color: { value: new THREE.Color(0x40e0f0) } };
+const crystalMat = new THREE.ShaderMaterial({
+  uniforms: crystalUniforms,
+  vertexShader: `
+    varying vec3 vN; varying vec3 vP;
+    void main() {
+      vN = normalize(normalMatrix * normal);
+      vP = (modelViewMatrix * vec4(position,1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }`,
+  fragmentShader: `
+    uniform float time; uniform vec3 color;
+    varying vec3 vN; varying vec3 vP;
+    void main() {
+      float fres = pow(1.0 - abs(dot(normalize(vN), normalize(-vP))), 2.2);
+      float pulse = 0.55 + 0.45 * sin(time * 3.0 + vP.y * 4.0);
+      vec3 col = color * (0.6 + fres * 0.8) * pulse + vec3(0.2,0.5,0.55) * fres;
+      gl_FragColor = vec4(col, 0.88);
+    }`,
+  transparent: true
+});
 
-// —— زمین با جزئیات ——
+// Fire shader
+const fireUniforms = { time: { value: 0 } };
+const fireMat = new THREE.ShaderMaterial({
+  uniforms: fireUniforms,
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }`,
+  fragmentShader: `
+    uniform float time; varying vec2 vUv;
+    void main() {
+      float f = vUv.y + sin(vUv.x * 10.0 + time * 8.0) * 0.05;
+      vec3 col = mix(vec3(1.0,0.2,0.0), vec3(1.0,0.8,0.1), f);
+      float a = smoothstep(0.0, 0.3, vUv.y) * smoothstep(1.0, 0.5, vUv.y);
+      gl_FragColor = vec4(col, a * 0.9);
+    }`,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide
+});
+
+// ===================== TERRAIN =====================
+const tileGeo = new THREE.BoxGeometry(1, 0.14, 1);
 for (let x = -13; x <= 13; x++) {
   for (let z = -13; z <= 13; z++) {
-    const m = new THREE.Mesh(G.tile, (x + z) % 2 === 0 ? M.grassA : M.grassB);
-    m.position.set(x, -0.07, z);
+    const h = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.04;
+    const m = new THREE.Mesh(tileGeo, (x + z) % 2 === 0 ? M.grassA : M.grassB);
+    m.position.set(x, -0.07 + h, z);
     m.receiveShadow = true;
     scene.add(m);
   }
 }
-// لکه‌های خاک حذف شدند (v5.05)
 
-// —— جنگل انبوه پرجزئیات ——
+// Dirt path through base
+(function makePaths() {
+  const pathMat = M.dirt;
+  for (let z = -3; z <= 3; z++) {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 1), pathMat);
+    p.position.set(0, -0.02, z); p.receiveShadow = true; scene.add(p);
+  }
+  for (let x = -2; x <= 2; x++) {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(1, 0.08, 1.4), pathMat);
+    p.position.set(x, -0.02, 0); p.receiveShadow = true; scene.add(p);
+  }
+})();
+
+// ===================== VEGETATION =====================
 function makeTree(x, z, scale = 1) {
   const g = new THREE.Group();
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.07 * scale, 0.13 * scale, 0.95 * scale, 6),
-    M.wood
-  );
-  trunk.position.y = 0.48 * scale;
-  trunk.castShadow = true;
-  trunk.receiveShadow = true;
-  g.add(trunk);
-  const layers = [
-    { y: 1.15, s: 0.72, mat: M.leaf },
-    { y: 1.55, s: 0.55, mat: M.leaf },
-    { y: 1.88, s: 0.38, mat: M.leafDark }
-  ];
-  layers.forEach(L => {
-    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(L.s * scale, 1), L.mat);
-    leaf.position.y = L.y * scale;
-    leaf.castShadow = true;
-    g.add(leaf);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * scale, 0.13 * scale, 0.95 * scale, 6), M.wood);
+  trunk.position.y = 0.48 * scale; trunk.castShadow = true; trunk.receiveShadow = true; g.add(trunk);
+  [[1.15, 0.72, M.leaf], [1.55, 0.55, M.leaf], [1.88, 0.38, M.leafDark]].forEach(([y, s, mat]) => {
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(s * scale, 1), mat);
+    leaf.position.y = y * scale; leaf.castShadow = true; g.add(leaf);
   });
-  g.position.set(x, 0, z);
-  g.rotation.y = Math.random() * Math.PI;
-  scene.add(g);
+  g.position.set(x, 0, z); g.rotation.y = Math.random() * 6.28; scene.add(g);
 }
 for (let i = -12; i <= 12; i++) {
   makeTree(i, -12, 0.85 + (Math.abs(i) % 3) * 0.12);
   makeTree(i, 12, 0.9 + (Math.abs(i) % 2) * 0.15);
-  makeTree(-12, i, 0.88);
-  makeTree(12, i, 0.92);
+  makeTree(-12, i, 0.88); makeTree(12, i, 0.92);
 }
 for (let i = -11; i <= 11; i += 2) {
-  makeTree(i + 0.6, -11, 0.65 + Math.random() * 0.2);
-  makeTree(i - 0.4, 11, 0.7);
-  makeTree(-11, i + 0.5, 0.68);
-  makeTree(11, i - 0.3, 0.72);
+  makeTree(i + 0.6, -11, 0.65); makeTree(i - 0.4, 11, 0.7);
+  makeTree(-11, i + 0.5, 0.68); makeTree(11, i - 0.3, 0.72);
 }
 
-// —— کمپ با آتش واقعی‌تر ——
+// Bushes & grass tufts
+const bushGeo = new THREE.IcosahedronGeometry(0.25, 0);
+for (let i = 0; i < 40; i++) {
+  const bx = (Math.random() - 0.5) * 20;
+  const bz = (Math.random() - 0.5) * 20;
+  if (Math.abs(bx) < 4 && Math.abs(bz) < 4) continue;
+  const bush = new THREE.Mesh(bushGeo, Math.random() > 0.5 ? M.leaf : M.leafDark);
+  bush.position.set(bx, 0.15, bz);
+  bush.scale.setScalar(0.6 + Math.random() * 0.8);
+  bush.castShadow = true; scene.add(bush);
+}
+
+// ===================== CLOUDS =====================
+const clouds = [];
+function makeCloud(x, y, z) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0xf0f4f8, roughness: 1, transparent: true, opacity: 0.85 });
+  for (let i = 0; i < 5; i++) {
+    const s = 0.8 + Math.random() * 1.2;
+    const p = new THREE.Mesh(new THREE.SphereGeometry(s, 8, 6), mat);
+    p.position.set((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 1.2);
+    g.add(p);
+  }
+  g.position.set(x, y, z);
+  g.userData.speed = 0.15 + Math.random() * 0.2;
+  scene.add(g); clouds.push(g);
+}
+for (let i = 0; i < 8; i++) {
+  makeCloud((Math.random() - 0.5) * 40, 12 + Math.random() * 6, (Math.random() - 0.5) * 40);
+}
+
+// ===================== CAMP =====================
 const campGroup = new THREE.Group();
-const campFloor = new THREE.Mesh(G.campFloor, M.camp);
-campFloor.position.set(0, 0.04, -4.3);
-campFloor.receiveShadow = true;
-campFloor.castShadow = true;
-campGroup.add(campFloor);
+const campFloor = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.2, 0.12, 32), M.camp);
+campFloor.position.set(0, 0.04, -4.3); campFloor.receiveShadow = true; campFloor.castShadow = true; campGroup.add(campFloor);
 for (let i = 0; i < 8; i++) {
   const a = (i / 8) * Math.PI * 2;
-  const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.1 + Math.random() * 0.06, 0),
-    M.stoneDark
-  );
-  rock.position.set(Math.cos(a) * 0.38, 0.1, -4.3 + Math.sin(a) * 0.38);
-  rock.castShadow = true;
-  campGroup.add(rock);
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1 + Math.random() * 0.06, 0), M.stoneDark);
+  rock.position.set(Math.cos(a) * 0.4, 0.1, -4.3 + Math.sin(a) * 0.4); rock.castShadow = true; campGroup.add(rock);
 }
-const fireCore = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.38, 6), M.fireCore);
-fireCore.position.set(0, 0.3, -4.3);
-fireCore.name = 'fire';
-campGroup.add(fireCore);
-const fireOuter = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.5, 6), M.fireOuter);
-fireOuter.position.set(0, 0.35, -4.3);
-fireOuter.name = 'fire2';
-campGroup.add(fireOuter);
-const fireLight = new THREE.PointLight(0xff6020, 1.4, 7, 1.5);
-fireLight.position.set(0, 0.55, -4.3);
-fireLight.castShadow = false;
-campGroup.add(fireLight);
-// ذرات آتش
+const fireCore = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 6), fireMat);
+fireCore.position.set(0, 0.32, -4.3); fireCore.name = 'fire'; campGroup.add(fireCore);
+const fireOuter = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.52, 6), fireMat);
+fireOuter.position.set(0, 0.38, -4.3); fireOuter.name = 'fire2'; campGroup.add(fireOuter);
+const fireLight = new THREE.PointLight(0xff6020, 1.5, 8, 1.5);
+fireLight.position.set(0, 0.6, -4.3); campGroup.add(fireLight);
 const fireParticles = [];
-for (let i = 0; i < 12; i++) {
+for (let i = 0; i < 16; i++) {
   const p = new THREE.Mesh(
-    new THREE.SphereGeometry(0.03 + Math.random() * 0.025, 4, 4),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(0.08 + Math.random() * 0.06, 1, 0.55), transparent: true, opacity: 0.8 })
+    new THREE.SphereGeometry(0.025 + Math.random() * 0.03, 4, 4),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(0.07 + Math.random() * 0.06, 1, 0.55), transparent: true, opacity: 0.85 })
   );
-  p.userData = { baseY: 0.4 + Math.random() * 0.2, speed: 0.4 + Math.random() * 0.6, phase: Math.random() * 6.28, x: (Math.random() - 0.5) * 0.15, z: (Math.random() - 0.5) * 0.15 };
+  p.userData = { baseY: 0.35 + Math.random() * 0.2, speed: 0.5 + Math.random() * 0.7, phase: Math.random() * 6.28, x: (Math.random() - 0.5) * 0.2, z: (Math.random() - 0.5) * 0.2 };
   p.position.set(p.userData.x, p.userData.baseY, -4.3 + p.userData.z);
-  campGroup.add(p);
-  fireParticles.push(p);
+  campGroup.add(p); fireParticles.push(p);
 }
-// چادر و کنده هیزم کمپ
-const tent = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.0, 4), new THREE.MeshStandardMaterial({ color: 0x6a4a28, roughness: 0.75 }));
-tent.position.set(-1.3, 0.55, -4.0); tent.rotation.y = Math.PI / 4; tent.castShadow = true; campGroup.add(tent);
-const tentPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 5), M.wood);
-tentPole.position.set(-1.3, 0.55, -4.0); campGroup.add(tentPole);
-for (let i = 0; i < 4; i++) {
-  const log = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.5, 6), M.woodDark);
-  log.rotation.z = Math.PI / 2; log.rotation.y = i * 0.4;
-  log.position.set(0.9 + (i % 2) * 0.15, 0.1, -3.7 + i * 0.12); log.castShadow = true; campGroup.add(log);
+// Tent, logs, bench
+const tent = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.05, 4), new THREE.MeshStandardMaterial({ color: 0x6a4a28, map: texWood, roughness: 0.75 }));
+tent.position.set(-1.35, 0.55, -4.0); tent.rotation.y = Math.PI / 4; tent.castShadow = true; campGroup.add(tent);
+for (let i = 0; i < 5; i++) {
+  const log = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.55, 6), M.woodDark);
+  log.rotation.z = Math.PI / 2; log.rotation.y = i * 0.35;
+  log.position.set(0.95, 0.1, -3.65 + i * 0.1); log.castShadow = true; campGroup.add(log);
 }
-const bench = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.25), M.wood);
-bench.position.set(1.2, 0.2, -4.8); bench.castShadow = true; campGroup.add(bench);
-
+const bench = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.08, 0.28), M.wood);
+bench.position.set(1.25, 0.22, -4.85); bench.castShadow = true; campGroup.add(bench);
 scene.add(campGroup);
 
-// —— بارگذاری مدل‌های Kenney برای دیوار/ستون ——
+// ===================== PARTICLES GLOBAL =====================
+const leafParticles = [];
+for (let i = 0; i < 25; i++) {
+  const leaf = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.12, 0.08),
+    new THREE.MeshBasicMaterial({ color: 0x4a8a30, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })
+  );
+  leaf.position.set((Math.random() - 0.5) * 24, 2 + Math.random() * 5, (Math.random() - 0.5) * 24);
+  leaf.userData = { speed: 0.3 + Math.random() * 0.4, sway: Math.random() * 6.28, rot: Math.random() };
+  scene.add(leaf); leafParticles.push(leaf);
+}
+const smokeParticles = [];
+const sparkles = [];
+
+// ===================== KENNEY LOADER =====================
 const gltfLoader = new GLTFLoader();
 const kenneyCache = {};
 const KENNEY_BASE = 'assets/kenney/Models/GLB format/';
-
 function loadKenney(name) {
   return new Promise(resolve => {
     if (kenneyCache[name]) { resolve(kenneyCache[name].clone()); return; }
     gltfLoader.load(KENNEY_BASE + name + '.glb', gltf => {
       gltf.scene.traverse(c => {
         if (c.isMesh) {
-          c.castShadow = true;
-          c.receiveShadow = true;
-          if (c.material) {
-            c.material = c.material.clone();
-            c.material.roughness = 0.65;
-            c.material.metalness = 0.08;
-          }
+          c.castShadow = true; c.receiveShadow = true;
+          if (c.material) { c.material = c.material.clone(); c.material.roughness = 0.65; c.material.metalness = 0.08; }
         }
       });
-      kenneyCache[name] = gltf.scene;
-      resolve(gltf.scene.clone());
+      kenneyCache[name] = gltf.scene; resolve(gltf.scene.clone());
     }, undefined, () => resolve(null));
   });
 }
-
-// پیش‌بارگذاری چند مدل
 ['border', 'border-high', 'column', 'column-thin', 'border-corner'].forEach(n => loadKenney(n));
 
+// ===================== BUILDINGS =====================
 const buildingMeshes = new Map();
 const troopMeshes = [];
 const fullLabels = new Map();
 const arrows = [];
-const sparkles = [];
+const flagMeshes = [];
 
 function disposeObj(obj) {
   obj.traverse(c => {
     if (c.geometry) c.geometry.dispose?.();
-    if (c.material && !Object.values(M).includes(c.material)) {
+    if (c.material && !Object.values(M).includes(c.material) && c.material !== crystalMat && c.material !== fireMat) {
       (Array.isArray(c.material) ? c.material : [c.material]).forEach(m => m.dispose?.());
     }
   });
 }
 
 function thPalette(lv) {
-  const palettes = [
-    { body: 0xc89850, roof: 0xe0b858, accent: 0xd4a040 },
-    { body: 0xb88840, roof: 0xd4a848, accent: 0xc09030 },
-    { body: 0x8a6030, roof: 0xc09048, accent: 0xa07028 },
-    { body: 0x6a4820, roof: 0xa07838, accent: 0x805828 },
-    { body: 0x4a3018, roof: 0x806030, accent: 0xffd700 }
-  ];
-  return palettes[Math.min(Math.max(lv, 1), 5) - 1];
+  return [
+    { body: 0xc89850, roof: 0xe0b858 }, { body: 0xb88840, roof: 0xd4a848 },
+    { body: 0x8a6030, roof: 0xc09048 }, { body: 0x6a4820, roof: 0xa07838 },
+    { body: 0x4a3018, roof: 0x806030 }
+  ][Math.min(Math.max(lv, 1), 5) - 1];
 }
 
 function addSelRing(g) {
-  const ring = new THREE.Mesh(G.ring, M.sel);
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.05;
-  ring.visible = false;
-  ring.name = 'selRing';
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.88, 40), M.sel);
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05; ring.visible = false; ring.name = 'selRing';
   g.add(ring);
+}
+
+function addFlag(g, x, y, z) {
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 5), M.wood);
+  pole.position.set(x, y, z); g.add(pole);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.28), M.flag);
+  flag.position.set(x + 0.24, y + 0.35, z);
+  flag.userData.flagAnim = true;
+  g.add(flag); flagMeshes.push(flag);
 }
 
 function createBuildingMesh(b) {
@@ -354,47 +468,39 @@ function createBuildingMesh(b) {
   const wLv = b.wallLevel || 1;
   const dLv = b.defLevel || 1;
 
-  // ——— دیوار با سطوح و اتصال بهتر کنج ———
   if (b.type === 'wall') {
     const h = 0.9 + wLv * 0.12;
-    const thick = 0.44 + wLv * 0.04;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.12, h, thick), wLv >= 3 ? M.stoneLight : M.stone);
+    const thick = 0.46 + wLv * 0.04;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.14, h, thick), wLv >= 3 ? M.stoneLight : M.stone);
     body.position.y = h / 2 + 0.02; body.castShadow = true; body.receiveShadow = true; g.add(body);
-    // کلاهک اتصال کنج (اورلپ برای اتصال بصری)
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.1, thick + 0.08), M.stoneDark);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.1, thick + 0.1), M.stoneDark);
     cap.position.y = h + 0.05; cap.castShadow = true; g.add(cap);
-    // کنگره
-    const merH = 0.22 + wLv * 0.04;
     for (let i = -0.4; i <= 0.4; i += 0.4) {
-      const mer = new THREE.Mesh(new THREE.BoxGeometry(0.28, merH, thick + 0.06), M.stoneDark);
-      mer.position.set(i, h + 0.1 + merH / 2, 0); mer.castShadow = true; g.add(mer);
+      const mer = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.24 + wLv * 0.04, thick + 0.08), M.stoneDark);
+      mer.position.set(i, h + 0.2, 0); mer.castShadow = true; g.add(mer);
     }
-    // خطوط آجر
-    for (let y = 0.2; y < h; y += 0.22) {
-      const line = new THREE.Mesh(new THREE.BoxGeometry(1.13, 0.025, thick + 0.01), M.stoneDark);
+    for (let y = 0.2; y < h; y += 0.2) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.02, thick + 0.01), M.stoneDark);
       line.position.y = y; g.add(line);
     }
     if (wLv >= 2) {
-      const iron = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.06, 0.06), M.metalDark);
-      iron.position.set(0, h * 0.55, thick / 2 + 0.02); g.add(iron);
+      const iron = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.06, 0.05), M.metalDark);
+      iron.position.set(0, h * 0.5, thick / 2 + 0.02); g.add(iron);
     }
     if (wLv >= 3) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 4), M.metal);
-      spike.position.set(0, h + 0.35, 0); g.add(spike);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 4), M.metal);
+      spike.position.set(0, h + 0.4, 0); g.add(spike);
     }
-    addSelRing(g);
-    g.rotation.y = ((b.rotY || 0) * Math.PI) / 180;
-    return g;
+    addSelRing(g); g.rotation.y = ((b.rotY || 0) * Math.PI) / 180; return g;
   }
 
-  // ——— برج دفاعی ارتقاپذیر ———
   if (b.type === 'cannon') {
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.66, 0.32, 12), M.wood);
     base.position.y = 0.16; base.castShadow = true; base.receiveShadow = true; g.add(base);
     const th = 1.5 + dLv * 0.15;
     const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.38 + dLv * 0.02, 0.5, th, 12), M.stone);
     tower.position.y = 0.32 + th / 2; tower.castShadow = true; tower.receiveShadow = true; g.add(tower);
-    for (let y = 0.5; y < 0.32 + th; y += 0.32) {
+    for (let y = 0.5; y < 0.32 + th; y += 0.3) {
       const band = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.035, 6, 20), M.stoneDark);
       band.rotation.x = Math.PI / 2; band.position.y = y; g.add(band);
     }
@@ -403,27 +509,19 @@ function createBuildingMesh(b) {
       const mer = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.26, 0.14), M.stoneLight);
       mer.position.set(Math.cos(a) * 0.44, 0.32 + th + 0.1, Math.sin(a) * 0.44); mer.castShadow = true; g.add(mer);
     }
-    // کماندار
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.24, 0.13), M.clothPurple);
     torso.position.y = 0.32 + th - 0.05; g.add(torso);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), M.skin);
     head.position.y = 0.32 + th + 0.18; g.add(head);
     const bow = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 5, 12, Math.PI), M.wood);
     bow.position.set(0.13, 0.32 + th, 0); bow.rotation.y = Math.PI / 2; g.add(bow);
-    if (dLv >= 2) {
-      const banner = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.35), M.flag);
-      banner.position.set(0.5, 0.32 + th * 0.6, 0); g.add(banner);
-    }
-    g.userData.isTower = true;
-    addSelRing(g);
-    return g;
+    if (dLv >= 2) addFlag(g, 0.5, 0.32 + th * 0.5, 0);
+    g.userData.isTower = true; addSelRing(g); return g;
   }
 
-  // ——— توپ جنگی پرجزئیات ———
   if (b.type === 'warcannon') {
     const platform = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.18, 1.05), M.woodDark);
     platform.position.y = 0.09; platform.castShadow = true; platform.receiveShadow = true; g.add(platform);
-    // چرخ‌ها با پره
     [-0.48, 0.48].forEach(ox => {
       const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.12, 14), M.wood);
       wheel.rotation.z = Math.PI / 2; wheel.position.set(ox, 0.26, 0); wheel.castShadow = true; g.add(wheel);
@@ -431,76 +529,59 @@ function createBuildingMesh(b) {
       hub.rotation.z = Math.PI / 2; hub.position.set(ox, 0.26, 0); g.add(hub);
       for (let i = 0; i < 6; i++) {
         const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.03), M.woodDark);
-        spoke.position.set(ox, 0.26, 0);
-        spoke.rotation.z = Math.PI / 2;
-        spoke.rotation.x = (i / 6) * Math.PI;
-        g.add(spoke);
+        spoke.position.set(ox, 0.26, 0); spoke.rotation.z = Math.PI / 2; spoke.rotation.x = (i / 6) * Math.PI; g.add(spoke);
       }
     });
     const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.05, 8), M.metalDark);
     axle.rotation.z = Math.PI / 2; axle.position.y = 0.26; g.add(axle);
-    // لوله چندبخشی
     const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 1.2, 12), M.metal);
     barrel.rotation.z = Math.PI / 2; barrel.position.set(0.22, 0.52, 0); barrel.castShadow = true; g.add(barrel);
     const reinforce = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 6, 12), M.metalDark);
     reinforce.rotation.y = Math.PI / 2; reinforce.position.set(0.1, 0.52, 0); g.add(reinforce);
     const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 0.14, 12), M.metalDark);
     muzzle.rotation.z = Math.PI / 2; muzzle.position.set(0.88, 0.52, 0); g.add(muzzle);
-    // پایه عقب
     const breech = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.28), M.metalDark);
     breech.position.set(-0.35, 0.42, 0); g.add(breech);
-    // گلوله کنار توپ
     const ball = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), M.metalDark);
     ball.position.set(-0.15, 0.2, 0.4); ball.castShadow = true; g.add(ball);
-    if (dLv >= 2) {
-      const smoke = new THREE.PointLight(0xff6020, 0.4, 2);
-      smoke.position.set(0.9, 0.55, 0); g.add(smoke);
-    }
-    addSelRing(g);
-    return g;
+    // smoke emitter marker
+    g.userData.smokePos = new THREE.Vector3(0.9, 0.55, 0);
+    addSelRing(g); return g;
   }
 
   const isTH = b.type === 'townhall';
   const lv = isTH ? (b.thLevel || 1) : 1;
   const pal = isTH ? thPalette(lv) : null;
 
-  // پایه سنگی مشترک
   const base = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.22, 1.25), M.stoneDark);
   base.position.y = 0.11; base.castShadow = true; base.receiveShadow = true; g.add(base);
   const step = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.1, 0.28), M.stone);
   step.position.set(0, 0.14, 0.58); g.add(step);
 
-  // ——— مرکز فرماندهی پرجزئیات ———
   if (isTH) {
     if (lv >= 3) {
       const bodyH = 1.1 + (lv - 3) * 0.35;
-      const bodyMat = new THREE.MeshStandardMaterial({ color: pal.body, roughness: 0.48, metalness: 0.14 });
+      const bodyMat = new THREE.MeshStandardMaterial({ color: pal.body, roughness: 0.48, metalness: 0.14, map: texStone });
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.64, bodyH, 10), bodyMat);
       body.position.y = 0.22 + bodyH / 2; body.castShadow = true; body.receiveShadow = true; g.add(body);
-      // ستون‌های تزئینی
       for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2;
         const col = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, bodyH * 0.9, 6), M.stoneLight);
-        col.position.set(Math.cos(a) * 0.58, 0.22 + bodyH * 0.45, Math.sin(a) * 0.58);
-        col.castShadow = true; g.add(col);
+        col.position.set(Math.cos(a) * 0.58, 0.22 + bodyH * 0.45, Math.sin(a) * 0.58); col.castShadow = true; g.add(col);
       }
       for (let i = 0; i < 5; i++) {
         const a = (i / 5) * Math.PI * 2 + 0.3;
         const win = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.05),
-          new THREE.MeshStandardMaterial({ color: 0xf5e090, emissive: 0x775500, emissiveIntensity: 0.45 }));
+          new THREE.MeshStandardMaterial({ color: 0xf5e090, emissive: 0x775500, emissiveIntensity: 0.5 }));
         win.position.set(Math.cos(a) * 0.62, 0.55 + bodyH * 0.25, Math.sin(a) * 0.62);
         win.lookAt(0, win.position.y, 0); g.add(win);
       }
-      const roofMat = new THREE.MeshStandardMaterial({ color: pal.roof, roughness: 0.35, metalness: 0.28 });
+      const roofMat = new THREE.MeshStandardMaterial({ color: pal.roof, map: texRoof, roughness: 0.35, metalness: 0.28 });
       const roof = new THREE.Mesh(new THREE.ConeGeometry(0.82, 0.7 + lv * 0.04, 10), roofMat);
       roof.position.y = 0.22 + bodyH + 0.35; roof.castShadow = true; g.add(roof);
-      // بالکن
       const balc = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.08, 10), M.stone);
       balc.position.y = 0.22 + bodyH * 0.55; g.add(balc);
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 6), M.wood);
-      pole.position.y = 0.22 + bodyH + 1.0; g.add(pole);
-      const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.32), M.flag);
-      flag.position.set(0.28, 0.22 + bodyH + 1.35, 0); g.add(flag);
+      addFlag(g, 0, 0.22 + bodyH + 0.9, 0);
       if (lv >= 4) {
         const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0), M.gold);
         gem.position.y = 0.22 + bodyH + 0.58; gem.userData.spin = true; g.add(gem);
@@ -514,157 +595,93 @@ function createBuildingMesh(b) {
       }
     } else {
       const bodyH = 0.75 + lv * 0.22;
-      const bodyMat = new THREE.MeshStandardMaterial({ color: pal.body, roughness: 0.52, metalness: 0.1 });
+      const bodyMat = new THREE.MeshStandardMaterial({ color: pal.body, roughness: 0.52, metalness: 0.1, map: texStone });
       const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, bodyH, 1.0), bodyMat);
       body.position.y = 0.22 + bodyH / 2; body.castShadow = true; body.receiveShadow = true; g.add(body);
-      // قاب و در
       const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.5, 0.06), M.woodDark);
       doorFrame.position.set(0, 0.4, 0.52); g.add(doorFrame);
       const door = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.42, 0.04), M.wood);
       door.position.set(0, 0.38, 0.55); g.add(door);
-      // پنجره‌ها
       [-0.28, 0.28].forEach(wx => {
         const win = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.04),
-          new THREE.MeshStandardMaterial({ color: 0xf0d870, emissive: 0x664400, emissiveIntensity: 0.35 }));
+          new THREE.MeshStandardMaterial({ color: 0xf0d870, emissive: 0x664400, emissiveIntensity: 0.4 }));
         win.position.set(wx, 0.55 + bodyH * 0.25, 0.51); g.add(win);
       });
-      const roofMat = new THREE.MeshStandardMaterial({ color: pal.roof, roughness: 0.4, metalness: 0.2 });
+      const roofMat = new THREE.MeshStandardMaterial({ color: pal.roof, map: texRoof, roughness: 0.4, metalness: 0.2 });
       const roof = new THREE.Mesh(new THREE.ConeGeometry(0.88, 0.52 + lv * 0.06, 4), roofMat);
       roof.position.y = 0.22 + bodyH + 0.28; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.95 + lv * 0.1, 5), M.wood);
-      pole.position.y = 0.22 + bodyH + 0.72; g.add(pole);
-      const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.28), M.flag);
-      flag.position.set(0.24, 0.22 + bodyH + 1.05, 0); g.add(flag);
+      addFlag(g, 0, 0.22 + bodyH + 0.65, 0);
     }
-    addSelRing(g);
-    return g;
+    addSelRing(g); return g;
   }
 
-  // ——— معدن الماس بسیار پرجزئیات ———
   if (b.type === 'diamondmine') {
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 1.0), new THREE.MeshStandardMaterial({ color: 0x2a6a70, roughness: 0.55, metalness: 0.15 }));
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 1.0), new THREE.MeshStandardMaterial({ color: 0x2a6a70, roughness: 0.55, metalness: 0.15, map: texStone }));
     frame.position.y = 0.55; frame.castShadow = true; frame.receiveShadow = true; g.add(frame);
-    // داربست چوبی
     [[-0.48, -0.48], [0.48, -0.48], [-0.48, 0.48], [0.48, 0.48]].forEach(([px, pz]) => {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.3, 5), M.wood);
       post.position.set(px, 0.85, pz); post.castShadow = true; g.add(post);
     });
     const beam = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.08, 0.08), M.woodDark);
     beam.position.y = 1.45; g.add(beam);
-    // کریستال‌های چندتایی
-    const crystalPos = [[0, 1.55], [0.25, 1.35], [-0.22, 1.4], [0.1, 1.75]];
-    crystalPos.forEach(([cx, cy], i) => {
-      const cry = new THREE.Mesh(new THREE.OctahedronGeometry(0.18 + i * 0.04, 0), M.crystal);
+    [[0, 1.55, 0.28], [0.25, 1.35, 0.18], [-0.22, 1.4, 0.2], [0.1, 1.75, 0.22]].forEach(([cx, cy, s], i) => {
+      const cry = new THREE.Mesh(new THREE.OctahedronGeometry(s, 0), crystalMat);
       cry.position.set(cx, cy, i * 0.05 - 0.08);
       cry.rotation.set(Math.random(), Math.random(), Math.random());
       cry.castShadow = true;
       if (i === 0) cry.userData.spin = true;
       g.add(cry);
     });
-    const glow = new THREE.PointLight(0x40e0f0, 0.85, 4);
+    const glow = new THREE.PointLight(0x40e0f0, 0.9, 4.5);
     glow.position.set(0, 1.6, 0); g.add(glow);
-    // سطل و طناب
     const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.15, 8), M.metal);
     bucket.position.set(0.35, 0.95, 0.35); g.add(bucket);
-    addSelRing(g);
-    return g;
+    addSelRing(g); return g;
   }
 
-  // ——— معدن سنگ پرجزئیات ———
   if (b.type === 'stonepit') {
     const pit = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.35, 10), M.dirt);
     pit.position.y = 0.28; pit.receiveShadow = true; g.add(pit);
-    // توده سنگ‌های متنوع
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 10; i++) {
       const s = 0.1 + Math.random() * 0.16;
       const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), i % 2 ? M.stone : M.stoneDark);
       rock.position.set((Math.random() - 0.5) * 0.7, 0.4 + Math.random() * 0.5, (Math.random() - 0.5) * 0.7);
       rock.rotation.set(Math.random(), Math.random(), Math.random());
       rock.castShadow = true; g.add(rock);
     }
-    // کلنگ
     const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7, 5), M.wood);
     handle.position.set(0.4, 0.7, 0.3); handle.rotation.z = 0.5; g.add(handle);
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.08), M.metal);
     head.position.set(0.55, 0.95, 0.3); g.add(head);
-    // جعبه چوبی
     const crate = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.25, 0.3), M.wood);
     crate.position.set(-0.4, 0.35, 0.35); crate.castShadow = true; g.add(crate);
-    addSelRing(g);
-    return g;
+    addSelRing(g); return g;
   }
 
-  // ——— پادگان ظاهر جدید ———
   if (b.type === 'barracks') {
-    // ساختمان مستطیلی با سقف شیب‌دار
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.85, 0.9), new THREE.MeshStandardMaterial({ color: 0xa06838, roughness: 0.6, metalness: 0.05 }));
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.85, 0.9), new THREE.MeshStandardMaterial({ color: 0xa06838, map: texWood, roughness: 0.6, metalness: 0.05 }));
     body.position.y = 0.65; body.castShadow = true; body.receiveShadow = true; g.add(body);
-    // سقف دو شیب
-    const roofL = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.08, 0.55), new THREE.MeshStandardMaterial({ color: 0x8a4030, roughness: 0.5, metalness: 0.1 }));
+    const roofL = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.08, 0.55), M.roof);
     roofL.position.set(0, 1.2, -0.2); roofL.rotation.x = 0.35; roofL.castShadow = true; g.add(roofL);
-    const roofR = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.08, 0.55), new THREE.MeshStandardMaterial({ color: 0x9a4830, roughness: 0.5, metalness: 0.1 }));
+    const roofR = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.08, 0.55), M.roof);
     roofR.position.set(0, 1.2, 0.2); roofR.rotation.x = -0.35; roofR.castShadow = true; g.add(roofR);
-    // در بزرگ
     const door = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.05), M.woodDark);
     door.position.set(0, 0.5, 0.48); g.add(door);
-    // پرچم نظامی
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 5), M.wood);
-    pole.position.set(0.55, 1.5, 0); g.add(pole);
-    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.22), M.flag);
-    flag.position.set(0.72, 1.75, 0); g.add(flag);
-    // سپر روی دیوار
+    addFlag(g, 0.55, 1.35, 0);
     const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 6), new THREE.MeshStandardMaterial({ color: 0xc04030, metalness: 0.35, roughness: 0.45 }));
     shield.rotation.x = Math.PI / 2; shield.position.set(-0.35, 0.85, 0.48); g.add(shield);
-    // رک سلاح
     const rack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.08), M.woodDark);
     rack.position.set(0.3, 0.7, 0.48); g.add(rack);
     const glow = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), new THREE.MeshBasicMaterial({ color: 0xe8a020, transparent: true, opacity: 0 }));
     glow.position.y = 1.7; glow.name = 'trainGlow'; g.add(glow);
-    addSelRing(g);
-    return g;
+    addSelRing(g); return g;
   }
 
-  addSelRing(g);
-  return g;
-}
-
-
-// ——— NPCهای متحرک شهر ———
-const cityNPCs = [];
-function spawnCityNPCs() {
-  cityNPCs.forEach(n => { scene.remove(n.mesh); });
-  cityNPCs.length = 0;
-  const paths = [
-    { points: [[-3, -2], [3, -2], [3, 1], [-3, 1]], speed: 0.35 },
-    { points: [[-4, 0], [-4, 3], [1, 3], [1, 0]], speed: 0.28 },
-    { points: [[2, -3], [4, 0], [2, 2], [0, -1]], speed: 0.4 },
-    { points: [[-2, 2], [0, 0], [2, -2], [-1, -3]], speed: 0.32 }
-  ];
-  paths.forEach((path, pi) => {
-    const mesh = createTroopMesh(pi % 2 === 0 ? 'swordsman' : 'archer');
-    mesh.scale.setScalar(0.7);
-    mesh.position.set(path.points[0][0], 0, path.points[0][1]);
-    scene.add(mesh);
-    cityNPCs.push({ mesh, path: path.points, speed: path.speed, t: Math.random(), idx: 0 });
-  });
-}
-function updateCityNPCs(dt) {
-  cityNPCs.forEach(npc => {
-    const pts = npc.path;
-    const i0 = Math.floor(npc.t) % pts.length;
-    const i1 = (i0 + 1) % pts.length;
-    const f = npc.t - Math.floor(npc.t);
-    const x = pts[i0][0] + (pts[i1][0] - pts[i0][0]) * f;
-    const z = pts[i0][1] + (pts[i1][1] - pts[i0][1]) * f;
-    npc.mesh.position.x = x; npc.mesh.position.z = z;
-    npc.mesh.position.y = Math.sin(npc.t * 8) * 0.02;
-    const dx = pts[i1][0] - pts[i0][0], dz = pts[i1][1] - pts[i0][1];
-    npc.mesh.rotation.y = Math.atan2(dx, dz);
-    npc.t += dt * npc.speed * 0.15;
-  });
+  addSelRing(g); return g;
 }
 
 function rebuildBuildings() {
+  flagMeshes.length = 0;
   buildingMeshes.forEach(m => { scene.remove(m); disposeObj(m); });
   buildingMeshes.clear();
   buildings.forEach(b => {
@@ -673,8 +690,7 @@ function rebuildBuildings() {
     scene.add(mesh);
     buildingMeshes.set(`${b.x},${b.z}`, mesh);
   });
-  updateSelectionVisual();
-  updateFullLabels();
+  updateSelectionVisual(); updateFullLabels();
 }
 
 function updateFullLabels() {
@@ -709,7 +725,11 @@ function updateSelectionVisual() {
     if (b) {
       info.classList.remove('hide');
       const hpStr = b.hp != null ? ` · مقاومت ${b.hp}` : '';
-      $('sel-name').textContent = defs[b.type].name + (b.type === 'townhall' ? ` (سطح ${b.thLevel || 1})` : '') + hpStr;
+      let extra = '';
+      if (b.type === 'wall') extra = ` (سطح ${b.wallLevel || 1})`;
+      if (b.type === 'cannon' || b.type === 'warcannon') extra = ` (سطح ${b.defLevel || 1})`;
+      if (b.type === 'townhall') extra = ` (سطح ${b.thLevel || 1})`;
+      $('sel-name').textContent = defs[b.type].name + extra + hpStr;
       const up = $('btn-upgrade');
       if (up) up.style.display = b.type === 'townhall' && (b.thLevel || 1) < TH_MAX && !thUpgrade ? '' : 'none';
       const ud = $('btn-upgrade-def');
@@ -723,63 +743,51 @@ function updateSelectionVisual() {
   } else info.classList.add('hide');
 }
 
+// ===================== TROOPS =====================
 function createTroopMesh(type) {
   const g = new THREE.Group();
-  const skin = M.skin;
-  const cloth = type === 'swordsman' ? M.clothBlue : type === 'archer' ? M.clothPurple : type === 'thief' ? M.clothGreen : M.clothBrown;
-
   if (type === 'cavalry') {
-    const horse = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.3, 0.58), new THREE.MeshStandardMaterial({ color: 0x5a3a1e, roughness: 0.7 }));
+    const horse = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.3, 0.58), new THREE.MeshStandardMaterial({ color: 0x5a3a1e, map: texWood, roughness: 0.7 }));
     horse.position.y = 0.36; horse.castShadow = true; g.add(horse);
     const hHead = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.15, 0.3), new THREE.MeshStandardMaterial({ color: 0x5a3a1e }));
     hHead.position.set(0, 0.5, 0.38); g.add(hHead);
-    [-0.13, 0.13].forEach(lx => {
-      [0.16, -0.16].forEach(lz => {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.3, 0.07), new THREE.MeshStandardMaterial({ color: 0x3a2a12 }));
-        leg.position.set(lx, 0.15, lz); g.add(leg);
-      });
-    });
-    const rider = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.26, 0.14), cloth);
+    [-0.13, 0.13].forEach(lx => [0.16, -0.16].forEach(lz => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.3, 0.07), new THREE.MeshStandardMaterial({ color: 0x3a2a12 }));
+      leg.position.set(lx, 0.15, lz); g.add(leg);
+    }));
+    const rider = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.26, 0.14), M.clothBrown);
     rider.position.y = 0.62; rider.castShadow = true; g.add(rider);
-    const rHead = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), skin);
+    const rHead = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), M.skin);
     rHead.position.y = 0.82; g.add(rHead);
     const lance = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.75, 5), M.metal);
     lance.position.set(0.16, 0.72, 0.12); lance.rotation.z = -0.35; g.add(lance);
     return g;
   }
-
+  const cloth = type === 'swordsman' ? M.clothBlue : type === 'archer' ? M.clothPurple : M.clothGreen;
   const legs = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.13), new THREE.MeshStandardMaterial({ color: 0x2a2a2a }));
   legs.position.y = 0.2; g.add(legs);
   const torso = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.34, 0.17), cloth);
   torso.position.y = 0.54; torso.castShadow = true; g.add(torso);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 8, 6), skin);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 8, 6), M.skin);
   head.position.y = 0.82; g.add(head);
-
   if (type === 'swordsman') {
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.2, 0.19), M.metal);
-    plate.position.y = 0.58; g.add(plate);
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.2, 0.19), M.metal); plate.position.y = 0.58; g.add(plate);
     const helm = new THREE.Mesh(new THREE.SphereGeometry(0.125, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), M.metalDark);
     helm.position.y = 0.88; g.add(helm);
     const sword = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.48, 0.04), M.metal);
     sword.position.set(0.22, 0.58, 0); g.add(sword);
-    const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.04), M.wood);
-    hilt.position.set(0.22, 0.36, 0); g.add(hilt);
   }
   if (type === 'archer') {
     const hair = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshStandardMaterial({ color: 0x3a2a15 }));
     hair.position.y = 0.9; hair.scale.set(1, 0.55, 1); g.add(hair);
     const bow = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.02, 5, 12, Math.PI), M.wood);
     bow.position.set(0.2, 0.58, 0); bow.rotation.y = Math.PI / 2; g.add(bow);
-    const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.28, 6), M.woodDark);
-    quiver.position.set(-0.15, 0.55, 0); g.add(quiver);
   }
   if (type === 'thief') {
     const hood = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.22, 7), M.clothGreen);
     hood.position.y = 0.98; g.add(hood);
     const bag = new THREE.Mesh(new THREE.SphereGeometry(0.1, 7, 5), M.woodDark);
     bag.position.set(-0.17, 0.42, 0); g.add(bag);
-    const dagger = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.24, 0.03), M.metal);
-    dagger.position.set(0.17, 0.5, 0); g.add(dagger);
   }
   return g;
 }
@@ -800,6 +808,42 @@ function refreshTroopVisuals() {
   };
   place('swordsman', troops.swordsman); place('archer', troops.archer);
   place('thief', troops.thief); place('cavalry', troops.cavalry);
+}
+
+// ===================== CITY NPCs =====================
+const cityNPCs = [];
+function spawnCityNPCs() {
+  cityNPCs.forEach(n => scene.remove(n.mesh));
+  cityNPCs.length = 0;
+  const paths = [
+    { points: [[-3, -2], [3, -2], [3, 1], [-3, 1]], speed: 0.35 },
+    { points: [[-4, 0], [-4, 3], [1, 3], [1, 0]], speed: 0.28 },
+    { points: [[2, -3], [4, 0], [2, 2], [0, -1]], speed: 0.4 },
+    { points: [[-2, 2], [0, 0], [2, -2], [-1, -3]], speed: 0.32 },
+    { points: [[-5, -1], [-1, -4], [3, -3], [4, 1]], speed: 0.3 },
+    { points: [[1, 2], [-2, 3], [-3, 0], [0, -2]], speed: 0.33 }
+  ];
+  paths.forEach((path, pi) => {
+    const types = ['swordsman', 'archer', 'thief', 'swordsman', 'archer', 'thief'];
+    const mesh = createTroopMesh(types[pi % types.length]);
+    mesh.scale.setScalar(0.68);
+    mesh.position.set(path.points[0][0], 0, path.points[0][1]);
+    scene.add(mesh);
+    cityNPCs.push({ mesh, path: path.points, speed: path.speed, t: Math.random() });
+  });
+}
+function updateCityNPCs(dt) {
+  cityNPCs.forEach(npc => {
+    const pts = npc.path;
+    const i0 = Math.floor(npc.t) % pts.length;
+    const i1 = (i0 + 1) % pts.length;
+    const f = npc.t - Math.floor(npc.t);
+    npc.mesh.position.x = pts[i0][0] + (pts[i1][0] - pts[i0][0]) * f;
+    npc.mesh.position.z = pts[i0][1] + (pts[i1][1] - pts[i0][1]) * f;
+    npc.mesh.position.y = Math.sin(npc.t * 8) * 0.02;
+    npc.mesh.rotation.y = Math.atan2(pts[i1][0] - pts[i0][0], pts[i1][1] - pts[i0][1]);
+    npc.t += dt * npc.speed * 0.15;
+  });
 }
 
 function countType(t) { return buildings.filter(b => b.type === t).length; }
@@ -846,7 +890,7 @@ function save() {
 }
 function load() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem('kingTown_v420') || localStorage.getItem('kingTown_v405');
+    const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem('kingTown_v505') || localStorage.getItem('kingTown_v420');
     if (!raw) return;
     const s = JSON.parse(raw);
     if (typeof s.diamonds === 'number') diamonds = Math.min(s.diamonds, 500);
@@ -865,7 +909,7 @@ function load() {
 }
 load();
 
-// ——— منطق بازی (بدون تغییر اساسی) ———
+// ===================== INPUT / GAME LOGIC =====================
 document.querySelectorAll('[data-type]').forEach(btn => {
   btn.addEventListener('click', () => {
     const t = btn.dataset.type;
@@ -927,8 +971,7 @@ renderer.domElement.addEventListener('pointerdown', e => {
   if (mode === 'rotate') {
     if (occupied?.type === 'wall') {
       occupied.rotY = ((occupied.rotY || 0) + 45) % 360;
-      rebuildBuildings();
-spawnCityNPCs(); selectedKey = key; updateSelectionVisual();
+      rebuildBuildings(); selectedKey = key; updateSelectionVisual();
       message('زاویه دیوار: ' + occupied.rotY + '°');
     } else message('فقط دیوار قابل چرخش است');
     return;
@@ -981,11 +1024,6 @@ $('btn-upgrade')?.addEventListener('click', async () => {
   $('th-upgrade-overlay')?.classList.remove('hide');
   updateUI(); message('ارتقا آغاز شد');
 });
-$('btn-rotate-sel')?.addEventListener('click', () => {
-  const b = buildings.find(o => `${o.x},${o.z}` === selectedKey);
-  if (b?.type === 'wall') { b.rotY = ((b.rotY || 0) + 45) % 360; rebuildBuildings(); message(b.rotY + '°'); }
-});
-$('btn-deselect')?.addEventListener('click', () => { selectedKey = null; moveTarget = null; updateSelectionVisual(); });
 
 $('btn-upgrade-def')?.addEventListener('click', async () => {
   const b = buildings.find(o => `${o.x},${o.z}` === selectedKey);
@@ -1009,7 +1047,11 @@ $('btn-upgrade-def')?.addEventListener('click', async () => {
   }
 });
 
-
+$('btn-rotate-sel')?.addEventListener('click', () => {
+  const b = buildings.find(o => `${o.x},${o.z}` === selectedKey);
+  if (b?.type === 'wall') { b.rotY = ((b.rotY || 0) + 45) % 360; rebuildBuildings(); message(b.rotY + '°'); }
+});
+$('btn-deselect')?.addEventListener('click', () => { selectedKey = null; moveTarget = null; updateSelectionVisual(); });
 
 function startTraining(type) {
   if (countType('barracks') < 1) { message('ابتدا پادگان بسازید'); return; }
@@ -1018,7 +1060,7 @@ function startTraining(type) {
   if (oil < cost) { message('نفت کافی نیست'); return; }
   oil -= cost;
   const dur = troopTime[type] * 1000;
-  trainQueue.push({ type, endsAt: performance.now() + dur, duration: dur, id: Math.random().toString(36).slice(2) });
+  trainQueue.push({ type, endsAt: performance.now() + dur, duration: dur });
   renderTrainOverlay(); updateUI(); message('آموزش ' + troopNames[type] + ' شروع شد');
 }
 function renderTrainOverlay() {
@@ -1088,7 +1130,6 @@ document.querySelectorAll('[data-pack]').forEach(btn => {
   });
 });
 
-
 $('btn-reward')?.addEventListener('click', () => {
   const code = ($('reward-code')?.value || '').trim().toUpperCase();
   if (code === 'RZ1999') {
@@ -1096,9 +1137,7 @@ $('btn-reward')?.addEventListener('click', () => {
     diamonds = c.diamonds; stone = c.stone; oil = c.oil; tokens = c.tokens;
     updateUI(); message('کد RZ1999 پذیرفته شد — همه منابع پر شد!');
     if ($('reward-code')) $('reward-code').value = '';
-  } else if (code) {
-    message('کد نامعتبر است');
-  }
+  } else if (code) message('کد نامعتبر است');
 });
 
 $('btn-join-clan')?.addEventListener('click', () => { clan = { name: 'کلن طلایی' }; updateUI(); message('به کلن طلایی پیوستید!'); });
@@ -1128,8 +1167,7 @@ function openAttackPage() {
       z.addEventListener('click', () => {
         if (!atkPick) { message('ابتدا نوع نیرو را انتخاب کنید'); return; }
         const side = dz.dataset.side;
-        const key = side + '-' + i;
-        deploy[key] = { type: atkPick, side };
+        deploy[side + '-' + i] = { type: atkPick, side };
         z.classList.add('filled'); z.textContent = troopIcons[atkPick];
         updateDeployUI();
       });
@@ -1270,14 +1308,12 @@ setInterval(() => {
   clampResources(); updateUI();
 }, 60000);
 
-// تیر با جزئیات
+// Arrows from towers
 setInterval(() => {
   buildings.filter(b => b.type === 'cannon').forEach(b => {
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.48, 5), M.wood);
     const tip = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.11, 5), M.metal);
     tip.position.y = 0.28; shaft.add(tip);
-    const fletch = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.015, 0.05), M.flag);
-    fletch.position.y = -0.2; shaft.add(fletch);
     shaft.position.set(b.x, 2.0, b.z);
     shaft.rotation.z = Math.PI / 2;
     const dir = new THREE.Vector3((Math.random() - 0.5) * 2, -0.04, (Math.random() - 0.5) * 2).normalize();
@@ -1285,6 +1321,21 @@ setInterval(() => {
     scene.add(shaft); arrows.push(shaft);
   });
 }, 2500);
+
+// War cannon smoke
+setInterval(() => {
+  buildings.filter(b => b.type === 'warcannon').forEach(b => {
+    for (let i = 0; i < 3; i++) {
+      const s = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 6, 5),
+        new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 })
+      );
+      s.position.set(b.x + 0.9, 0.6, b.z);
+      s.userData = { vel: new THREE.Vector3(0.02 + Math.random() * 0.03, 0.04 + Math.random() * 0.03, (Math.random() - 0.5) * 0.02), life: 40 };
+      scene.add(s); smokeParticles.push(s);
+    }
+  });
+}, 3200);
 
 window.addEventListener('resize', () => {
   const w = container.clientWidth, h = container.clientHeight;
@@ -1300,13 +1351,22 @@ function animate() {
   const t = clock.getElapsedTime();
   const dt = Math.min(clock.getDelta(), 0.05);
 
+  crystalUniforms.time.value = t;
+  fireUniforms.time.value = t;
+  updateDayNight(t);
+
   buildingMeshes.forEach(mesh => {
     mesh.traverse(c => {
       if (c.userData?.spin) {
         c.rotation.y = t * 1.8;
-        c.position.y = (c.userData.baseY || c.position.y) + Math.sin(t * 2.5) * 0.03;
+        c.position.y += Math.sin(t * 2.5) * 0.0005;
       }
     });
+  });
+
+  flagMeshes.forEach((f, i) => {
+    f.rotation.y = Math.sin(t * 2.5 + i) * 0.25;
+    f.scale.x = 1 + Math.sin(t * 3 + i) * 0.05;
   });
 
   troopMeshes.forEach(m => {
@@ -1317,7 +1377,6 @@ function animate() {
     m.rotation.y = Math.sin(ph) * 0.35;
   });
 
-  // آتش + ذرات
   const f1 = campGroup.getObjectByName('fire');
   const f2 = campGroup.getObjectByName('fire2');
   if (f1) { f1.scale.set(1, 0.85 + Math.sin(t * 9) * 0.25, 1); f1.rotation.y = t * 3; }
@@ -1329,13 +1388,33 @@ function animate() {
     p.material.opacity = Math.max(0, 0.9 - (p.position.y - u.baseY) * 0.7);
     if (p.position.y > u.baseY + 1.1) p.position.y = u.baseY;
   });
-  if (fireLight) fireLight.intensity = 1.2 + Math.sin(t * 6) * 0.35;
+  if (fireLight) fireLight.intensity = 1.2 + Math.sin(t * 6) * 0.4;
+
+  leafParticles.forEach(p => {
+    p.position.y -= p.userData.speed * dt * 0.5;
+    p.position.x += Math.sin(t + p.userData.sway) * 0.01;
+    p.rotation.z += p.userData.rot * dt;
+    if (p.position.y < 0) p.position.y = 6 + Math.random() * 3;
+  });
+
+  clouds.forEach(c => {
+    c.position.x += c.userData.speed * dt;
+    if (c.position.x > 25) c.position.x = -25;
+  });
 
   for (let i = arrows.length - 1; i >= 0; i--) {
     const a = arrows[i];
     a.position.add(a.userData.vel);
     a.userData.life--;
     if (a.userData.life <= 0) { scene.remove(a); disposeObj(a); arrows.splice(i, 1); }
+  }
+  for (let i = smokeParticles.length - 1; i >= 0; i--) {
+    const s = smokeParticles[i];
+    s.position.add(s.userData.vel);
+    s.userData.life--;
+    s.material.opacity *= 0.97;
+    s.scale.multiplyScalar(1.02);
+    if (s.userData.life <= 0) { scene.remove(s); disposeObj(s); smokeParticles.splice(i, 1); }
   }
 
   updateTraining();
@@ -1345,15 +1424,16 @@ function animate() {
 }
 
 rebuildBuildings();
+spawnCityNPCs();
 refreshTroopVisuals();
 updateUI();
 animate();
 
 window.KingTownEngine = {
-  version: '5.05',
+  version: '6.0.1',
   getBuildings: () => buildings,
   getTroops: () => ({ ...troops }),
   totalPower, capacity, campLimit,
   scene, camera, renderer
 };
-console.info('[KingTown] v5.05 detail graphics ready');
+console.info('[KingTown] v6.0.1 deep graphics ready');
