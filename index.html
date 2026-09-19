@@ -12,7 +12,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">⚔ <em>KING</em>TOWN<small>v5.0.1</small></div>
+    <div class="brand">⚔ <em>KING</em>TOWN<small>v5.05</small></div>
     <div class="resources">
       <div class="res-chip"><div class="chip-top"><span>💎</span><b id="diamonds">200</b></div><div class="chip-bar"><i id="bar-diamonds"></i></div><small id="cap-d">/500</small></div>
       <div class="res-chip"><div class="chip-top"><span>🪨</span><b id="stone">420</b></div><div class="chip-bar stone"><i id="bar-stone"></i></div><small id="cap-s">/1500</small></div>
@@ -42,6 +42,7 @@
       <div class="selected-info hide" id="selected-info">
         <span id="sel-name">—</span>
         <button id="btn-upgrade" class="small">⬆ ارتقا</button>
+        <button id="btn-upgrade-def" class="small hide">⬆ دفاع</button>
         <button id="btn-rotate-sel" class="small hide">↻</button>
         <button id="btn-deselect" class="small">✕</button>
       </div>
@@ -107,7 +108,7 @@
   <aside id="drawer" class="drawer hide">
     <button id="close" class="iconbtn">✕</button>
     <h2>KingTown</h2>
-    <p class="ver"><b>نسخه ۵.۰.۱</b></p>
+    <p class="ver"><b>نسخه ۵.۰۵</b></p>
     <div class="menu-section">
       <b>خرید سکه</b>
       <small>هر ۵ سکه ≈ ۱ دلار · سقف ۱۰۰</small>
@@ -122,6 +123,13 @@
       <b>کلن</b>
       <p id="clan-info">هنوز عضو کلنی نیستید</p>
       <button id="btn-join-clan">پیوستن به کلن طلایی</button>
+    </div>
+    <div class="menu-section">
+      <b>کد جایزه</b>
+      <div class="convert-row" style="margin-top:6px">
+        <input type="text" id="reward-code" placeholder="کد را وارد کنید" style="flex:1;padding:6px;border-radius:6px;border:1px solid #4a6a50;background:#0e1c14;color:#fff;font-size:12px;font-weight:700">
+        <button id="btn-reward" style="padding:6px 10px">اعمال</button>
+      </div>
     </div>
     <button id="reset" class="danger">شروع دوباره</button>
   </aside>
